@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
 
 void main() {
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const OverlayExample(),
+      home: const AnimatedListExample(),
     );
   }
 }
