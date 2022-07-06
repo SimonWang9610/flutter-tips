@@ -12,12 +12,13 @@ mixin CircularLayoutMixin on FlowDelegate {
     if (index == 0) {
       return Offset.zero;
     }
-    final dx = (radius - childSize.width / 2) *
-        cos(index * perRad - (startAngle ?? 0)) *
-        animation.value;
-    final dy = (radius - childSize.height / 2) *
-        sin(index * perRad - (startAngle ?? 0)) *
-        animation.value;
+
+    final effectiveAngle = (index - 1) * perRad - (startAngle ?? 0);
+
+    final dx =
+        (radius - childSize.width / 2) * cos(effectiveAngle) * animation.value;
+    final dy =
+        (radius - childSize.height / 2) * sin(effectiveAngle) * animation.value;
 
     return Offset(dx, dy);
   }
@@ -31,7 +32,11 @@ mixin CircularLayoutMixin on FlowDelegate {
   }
 
   Offset getAnchorOffset(Size parentSize, Size entrySize) {
-    final Offset offset = Offset(-entrySize.width / 2, 0);
-    return alignment.alongSize(parentSize) + offset;
+    // final Offset offset = Offset(-entrySize.width / 2, -entrySize.height / 2);
+
+    final relativeOffset = alignment.alongSize(entrySize);
+
+    // print('offset: $offset, relative: $relativeOffset');
+    return alignment.alongSize(parentSize) - relativeOffset;
   }
 }

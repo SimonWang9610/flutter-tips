@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'floating_buttons.dart';
+import 'models.dart';
+import 'flow_buttons.dart';
 
 class FlowButtonsExample extends StatefulWidget {
   const FlowButtonsExample({Key? key}) : super(key: key);
@@ -9,7 +10,6 @@ class FlowButtonsExample extends StatefulWidget {
 }
 
 class _FlowButtonsExampleState extends State<FlowButtonsExample> {
-  final GlobalKey<FlowButtonsState> flowKey = GlobalKey<FlowButtonsState>();
   final List<FlowEntry> entries = [
     FlowEntry(
       child: Icon(
@@ -47,33 +47,41 @@ class _FlowButtonsExampleState extends State<FlowButtonsExample> {
       appBar: AppBar(
         title: const Text('Flow Buttons Example'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            const Text('text'),
-            SizedBox(
-              width: 400,
-              height: 400,
-              child: FlowButtons(
-                entries: entries,
+      body: Stack(
+        alignment: Alignment.center,
+        fit: StackFit.expand,
+        clipBehavior: Clip.none,
+        children: [
+          const Text('Stack'),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FlowButtons(
+              entries: entries,
+              type: FlowType.circular,
+              params: CircularFlowParams(
+                angle: 180,
+                radius: 100,
               ),
             ),
-            Expanded(
+          ),
+          Positioned(
+            right: 10,
+            bottom: 10,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints.tightFor(
+                width: 200,
+                height: 100,
+              ),
               child: FlowButtons(
-                alignment: Alignment(0, 0),
-                // direction: FlowDirection.down,
                 entries: entries,
+                type: FlowType.linear,
+                params: LinearFlowParams(
+                  direction: FlowDirection.left,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          flowKey.currentState?.activateButton();
-        },
-        child: const Icon(Icons.play_arrow),
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/flow/floating_buttons.dart';
+
+import 'models.dart';
 
 mixin LinearLayoutMixin on FlowDelegate {
   FlowDirection get direction;
@@ -7,8 +8,9 @@ mixin LinearLayoutMixin on FlowDelegate {
   Animation<double> get animation;
 
   Offset getAnchorOffset(Size parentSize, Size entrySize) {
-    final Offset offset = Offset(-entrySize.width / 2, 0);
-    return alignment.alongSize(parentSize) + offset;
+    final relativeOffset = alignment.alongSize(entrySize);
+
+    return alignment.alongSize(parentSize) - relativeOffset;
   }
 
   /// calculate the offset relative to the [anchor] when changing during animation
