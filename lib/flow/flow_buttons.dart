@@ -71,12 +71,14 @@ class _FlowButtonsState extends State<FlowButtons>
         delegate = LinearFlowDelegate(
           animation: animation,
           params: widget.params as LinearFlowParams,
+          alignment: widget.alignment,
         );
         break;
       case FlowType.circular:
         delegate = CircularFlowDelegate(
           animation: animation,
           params: widget.params as CircularFlowParams,
+          alignment: widget.alignment,
         );
         break;
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/flow/example.dart';
+import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
 
@@ -27,7 +28,9 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const FlowButtonsExample(),
+      home: const MyHomePage(
+        title: 'My Home Page',
+      ),
     );
   }
 }
@@ -78,41 +81,48 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Invoke "debug painting" (press "p" in the console, choose the
-          // "Toggle Debug Paint" action from the Flutter Inspector in Android
-          // Studio, or the "Toggle Debug Paint" command in Visual Studio Code)
-          // to see the wireframe for each widget.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headline4,
-            ),
-          ],
-        ),
-      ),
+      body: const Center(
+          // Center is a layout widget. It takes a single child and positions it
+          // in the middle of the parent.
+          child: MyHomePage(title: 'MyHomePage')),
       floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
+        onPressed: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (innerCtx) => const DescendantScreen(),
+          ));
+        },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+}
+
+class DescendantScreen extends StatefulWidget {
+  const DescendantScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DescendantScreen> createState() => _DescendantScreenState();
+}
+
+class _DescendantScreenState extends State<DescendantScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: IconButton(
+          onPressed: () {
+            final home = context.findAncestorWidgetOfExactType<MyHomePage>();
+
+            if (home != null) {
+              print('MyHomePage is its ancestor');
+            } else {
+              print('no such ancestor');
+            }
+          },
+          icon: const Icon(Icons.add),
+        ),
+      ),
     );
   }
 }

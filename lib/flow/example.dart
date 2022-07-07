@@ -48,19 +48,21 @@ class _FlowButtonsExampleState extends State<FlowButtonsExample> {
         title: const Text('Flow Buttons Example'),
       ),
       body: Stack(
-        alignment: Alignment.center,
+        // alignment: Alignment.center,
         fit: StackFit.expand,
         clipBehavior: Clip.none,
         children: [
           const Text('Stack'),
           Align(
-            alignment: Alignment.centerRight,
+            alignment: Alignment.center,
             child: FlowButtons(
               entries: entries,
+              alignment: Alignment.bottomRight,
               type: FlowType.circular,
               params: CircularFlowParams(
                 angle: 180,
                 radius: 100,
+                autoFill: false,
               ),
             ),
           ),
