@@ -52,14 +52,18 @@ class CircularFlowParams extends FlowTypeParams {
 }
 
 class LinearFlowParams extends FlowTypeParams {
+  final double factor;
   final FlowDirection direction;
   LinearFlowParams({
     this.direction = FlowDirection.down,
+    this.factor = 0,
     bool autoFill = true,
   }) : super(autoFill);
 
   @override
   bool operator ==(covariant LinearFlowParams other) {
-    return direction == other.direction && autoFill == other.autoFill;
+    return direction == other.direction &&
+        autoFill == other.autoFill &&
+        factor == other.factor;
   }
 }

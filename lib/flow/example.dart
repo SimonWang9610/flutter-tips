@@ -57,12 +57,12 @@ class _FlowButtonsExampleState extends State<FlowButtonsExample> {
             alignment: Alignment.center,
             child: FlowButtons(
               entries: entries,
-              alignment: Alignment.bottomRight,
+              alignment: Alignment.center,
               type: FlowType.circular,
               params: CircularFlowParams(
-                angle: 180,
+                angle: 90,
                 radius: 100,
-                autoFill: false,
+                autoFill: true,
               ),
             ),
           ),
@@ -76,6 +76,7 @@ class _FlowButtonsExampleState extends State<FlowButtonsExample> {
               ),
               child: FlowButtons(
                 entries: entries,
+                clipBehavior: Clip.none,
                 type: FlowType.linear,
                 params: LinearFlowParams(
                   direction: FlowDirection.left,

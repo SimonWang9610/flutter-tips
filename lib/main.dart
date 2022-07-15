@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tips/blocks/list_block.dart';
+import 'package:flutter_tips/blocks/list_data.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
@@ -28,9 +30,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(
-        title: 'My Home Page',
-      ),
+      home: const FlowButtonsExample(),
     );
   }
 }
@@ -54,17 +54,17 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+  final ListBlockData data = ListBlockData(
+    id: 'listBlock',
+    type: 'list',
+    style: ListBlockStyle.ordered,
+  );
+  late final ListBlock block;
+  @override
+  void initState() {
+    super.initState();
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+    block = ListBlock(data: data);
   }
 
   @override
@@ -81,48 +81,35 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: const Center(
-          // Center is a layout widget. It takes a single child and positions it
-          // in the middle of the parent.
-          child: MyHomePage(title: 'MyHomePage')),
+      body: Center(
+        // Center is a layout widget. It takes a single child and positions it
+        // in the middle of the parent.
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 30,
+            vertical: 20,
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: block.build(),
+              ),
+            ],
+          ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (innerCtx) => const DescendantScreen(),
-          ));
+          print(data.toMap());
+
+          showDialog(
+            context: context,
+            builder: (_) => block.preview,
+          );
         },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
-  }
-}
-
-class DescendantScreen extends StatefulWidget {
-  const DescendantScreen({Key? key}) : super(key: key);
-
-  @override
-  State<DescendantScreen> createState() => _DescendantScreenState();
-}
-
-class _DescendantScreenState extends State<DescendantScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: IconButton(
-          onPressed: () {
-            final home = context.findAncestorWidgetOfExactType<MyHomePage>();
-
-            if (home != null) {
-              print('MyHomePage is its ancestor');
-            } else {
-              print('no such ancestor');
-            }
-          },
-          icon: const Icon(Icons.add),
-        ),
-      ),
     );
   }
 }

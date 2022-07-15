@@ -16,14 +16,16 @@ class LinearFlowDelegate extends ButtonFlowDelegate<LinearFlowParams> {
     double? dx;
     double? dy;
 
+    final effectiveFactor = index * (1 + params.factor);
+
     switch (direction) {
       case FlowDirection.left:
       case FlowDirection.right:
-        dx = childSize.width * index * animation.value;
+        dx = childSize.width * effectiveFactor * animation.value;
         break;
       case FlowDirection.down:
       case FlowDirection.up:
-        dy = childSize.height * index * animation.value;
+        dy = childSize.height * effectiveFactor * animation.value;
         break;
     }
     return Offset(dx ?? 0, dy ?? 0);

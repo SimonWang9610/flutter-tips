@@ -68,8 +68,10 @@ abstract class ButtonFlowDelegate<T extends FlowTypeParams>
     }
   }
 
+  /// get the translation distance from the centre of the entry to the specific position determined by [alignment] and [parentSize]
+
   Offset getAnchorOffset(Size parentSize, Size entrySize) {
-    final relativeOffset = alignment.alongSize(entrySize);
+    final relativeOffset = Alignment.center.alongSize(entrySize);
 
     return alignment.alongSize(parentSize) - relativeOffset;
   }

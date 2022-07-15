@@ -52,7 +52,11 @@ class CircularFlowDelegate extends ButtonFlowDelegate<CircularFlowParams> {
   }
 
   void calculatePerRad(int count) {
-    final divisor = params.autoFill ? count - 1 : count - 2;
+    double divisor = 1;
+
+    if (count > 2) {
+      divisor = params.autoFill ? count - 2 : count - 1;
+    }
 
     perRad ??= angle / 180 * pi / divisor;
   }
