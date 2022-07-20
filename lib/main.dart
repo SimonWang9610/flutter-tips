@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/blocks/list_block.dart';
 import 'package:flutter_tips/blocks/list_data.dart';
+import 'package:flutter_tips/carousel/example.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
@@ -30,7 +31,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const FlowButtonsExample(),
+      home: const CarouselSliderExample(),
     );
   }
 }
