@@ -6,6 +6,7 @@ import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
+import 'package:flutter_tips/planet/example.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,7 +32,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const CarouselSliderExample(),
+      home: const CloudPlanetExample(),
     );
   }
 }
