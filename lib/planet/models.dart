@@ -120,7 +120,7 @@ class PlanetData {
   PlanetData({
     required this.items,
     double speed = 1.0,
-    double factor = 1,
+    double factor = 0.5,
   })  : effectiveRadius = 0.0,
         rotationAngles = RotationAngles.init(speed: speed, factor: factor),
         initialized = false;
@@ -163,6 +163,8 @@ class PlanetData {
     final double yAngle = delta.dx / effectiveRadius * pi;
 
     final double zAngle = delta.distance / effectiveRadius * pi;
+
+    if (zAngle == 0) return;
 
     rotationAngles.update(x: xAngle, y: yAngle, z: zAngle);
 
