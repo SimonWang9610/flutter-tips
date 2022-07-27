@@ -77,6 +77,8 @@ class _CloudPlanetState extends State<CloudPlanet>
   }
 
   void _onPanEnd(DragEndDetails details) {
+    _velocityPerSecond = details.velocity.pixelsPerSecond / 1000;
+
     velocityController.reset();
 
     velocityController.addListener(_decreasingVelocityByTick);
