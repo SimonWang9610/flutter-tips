@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
 class AnimatedTransform extends ImplicitlyAnimatedWidget {
-  final Matrix4 transform;
+  final Matrix4? transform;
+  final Offset? origin;
   final Widget? child;
   const AnimatedTransform({
     Key? key,
-    required this.transform,
+    this.transform,
     this.child,
+    this.origin,
     Curve curve = Curves.easeIn,
     Duration duration = const Duration(milliseconds: 200),
   }) : super(
@@ -35,9 +37,14 @@ class AnimatedTransformState
   Widget build(BuildContext context) {
     final Animation<double> animation = this.animation;
 
-    return Transform(
-      transform: _transform?.evaluate(animation) ?? widget.transform,
-      child: widget.child,
-    );
+    if (_transform == null) {
+      return widget.child!;
+    } else {
+      return Transform(
+        transform: _transform!.evaluate(animation),
+        origin: widget.origin,
+        child: widget.child,
+      );
+    }
   }
 }

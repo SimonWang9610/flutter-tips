@@ -3,6 +3,7 @@ import 'package:flutter_tips/blocks/list_block.dart';
 import 'package:flutter_tips/blocks/list_data.dart';
 import 'package:flutter_tips/carousel/example.dart';
 import 'package:flutter_tips/flow/example.dart';
+import 'package:flutter_tips/gallery/example.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
@@ -32,7 +33,7 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const CloudPlanetExample(),
+      home: const GridGalleryExample(),
     );
   }
 }
@@ -56,17 +57,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final ListBlockData data = ListBlockData(
-    id: 'listBlock',
-    type: 'list',
-    style: ListBlockStyle.ordered,
-  );
-  late final ListBlock block;
   @override
   void initState() {
     super.initState();
-
-    block = ListBlock(data: data);
   }
 
   @override
@@ -93,25 +86,35 @@ class _MyHomePageState extends State<MyHomePage> {
           ),
           child: Column(
             children: [
-              Expanded(
-                child: block.build(),
-              ),
+              TestRebuild(title: 'test'),
             ],
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          print(data.toMap());
-
-          showDialog(
-            context: context,
-            builder: (_) => block.preview,
-          );
+          setState(() {});
         },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+}
+
+class TestRebuild extends StatelessWidget {
+  final String title;
+  const TestRebuild({
+    Key? key,
+    required this.title,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    print('building: $title');
+    return Text(title);
+  }
+
+  // @override
+  // bool operator ==(covariant TestRebuild other) => title != other.title;
 }
