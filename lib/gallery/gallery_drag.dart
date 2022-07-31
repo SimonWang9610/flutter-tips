@@ -59,11 +59,15 @@ class GalleryItemDrag extends Drag {
     onDragCancel?.call(this);
   }
 
+  Offset overlayPosition(BuildContext context) {
+    return dragPosition - dragOffset - _overlayOrigin(context);
+  }
+
   Widget buildOverlay(BuildContext context) {
     return DraggingItemOverlay(
       gridState: gridState,
       index: index,
-      position: dragPosition - dragOffset - _overlayOrigin(context),
+      position: overlayPosition(context),
       size: itemSize,
       child: child,
     );
@@ -90,9 +94,17 @@ class DraggingItemOverlay extends StatelessWidget {
     return Positioned(
       left: position.dx,
       top: position.dy,
-      child: SizedBox.fromSize(
-        size: size,
-        child: child,
+      child: Material(
+        elevation: 4.0,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.red),
+          ),
+          child: SizedBox.fromSize(
+            size: size,
+            child: child,
+          ),
+        ),
       ),
     );
   }

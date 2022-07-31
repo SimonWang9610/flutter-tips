@@ -62,6 +62,8 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
   }
 
+  double shift = 0.0;
+
   @override
   Widget build(BuildContext context) {
     // This method is rerun every time setState is called, for instance as done
@@ -84,15 +86,33 @@ class _MyHomePageState extends State<MyHomePage> {
             horizontal: 30,
             vertical: 20,
           ),
-          child: Column(
-            children: [
-              TestRebuild(title: 'test'),
-            ],
+          child: DecoratedBox(
+            decoration: BoxDecoration(border: Border.all()),
+            child: SizedBox(
+              width: 100,
+              child: Column(
+                children: [
+                  GestureTest(
+                    label: 'first',
+                    onTap: _translate,
+                  ),
+                  Transform.translate(
+                    offset: Offset(shift, shift),
+                    child: GestureTest(
+                      label: 'second',
+                      onTap: _translate,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          shift += 10.0;
+
           setState(() {});
         },
         tooltip: 'Increment',
@@ -100,21 +120,70 @@ class _MyHomePageState extends State<MyHomePage> {
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
+
+  void _translate() {
+    shift += 5.0;
+    setState(() {});
+  }
 }
 
-class TestRebuild extends StatelessWidget {
-  final String title;
-  const TestRebuild({
+class DragTest extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  const DragTest({
     Key? key,
-    required this.title,
+    required this.label,
+    this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    print('building: $title');
-    return Text(title);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(),
+      ),
+      child: DragTarget<String>(
+        builder: (_, __, ___) {
+          return Draggable<String>(
+            data: label,
+            feedback: Text('Dragging $label'),
+            child: SizedBox.square(
+              dimension: 50,
+              child: Text(label),
+            ),
+          );
+        },
+        onAccept: (_) {
+          onTap?.call();
+        },
+      ),
+    );
   }
+}
 
-  // @override
-  // bool operator ==(covariant TestRebuild other) => title != other.title;
+class GestureTest extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  const GestureTest({
+    Key? key,
+    required this.label,
+    this.onTap,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border.all()),
+      child: SizedBox.square(
+        dimension: 50,
+        child: GestureDetector(
+          onTap: () {
+            print('tap: $label');
+            onTap?.call();
+          },
+          child: Text(label),
+        ),
+      ),
+    );
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/gallery/gallery_drag.dart';
 import 'package:flutter_tips/gallery/gallery_item.dart';
+import 'package:flutter_tips/gallery/models.dart';
 
 class GridGallery extends StatefulWidget {
   final int crossAxisCount;
@@ -65,8 +66,10 @@ class GridGalleryState extends State<GridGallery>
 
   int get crossAxisCount => widget.crossAxisCount;
   int get maxCount => widget.maxCount;
+  int get totalItem => widget.galleries.length;
   double get crossAxisSpacing => widget.crossAxisSpacing;
   double get mainAxisSpacing => widget.mainAxisSpacing;
+  List<Widget> get galleries => widget.galleries;
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +95,7 @@ class GridGalleryState extends State<GridGallery>
 
   Widget _addItem() {
     return IconButton(
+      key: const ValueKey('AddItem'),
       onPressed: () {
         final length = widget.galleries.length;
 
@@ -108,16 +112,38 @@ class GridGalleryState extends State<GridGallery>
 
   /// register [item] so as to it could be translated by [_translateItems] when
   /// [_onDragUpdate] and also allow [GridGallery] to control its rebuild.
-  void registerItem(int index, GalleryItemWidgetState item) {
-    _items[index] = item;
+  void registerItem(GalleryItemWidgetState item) {
+    _items[item.index] = item;
+
+    if (item.index == _drag?.index) {
+      item.isDragging = true;
+      item.rebuild();
+    }
   }
 
   /// only unregister the item if the [index] is matched to [item]
   void unregisterItem(int index, GalleryItemWidgetState item) {
-    final targetItem = _items[index];
+    final current = _items[index];
 
-    if (targetItem == item) {
+    if (current == item) {
       _items.remove(index);
+    }
+  }
+
+  ///
+  /// origin------x
+  /// |
+  /// |
+  /// y
+  Offset calculateItemCoordinate(int itemIndex) {
+    final vertical = (itemIndex ~/ crossAxisCount).toDouble();
+    final horizontal = (itemIndex % crossAxisCount).toDouble();
+
+    switch (widget.scrollDirection) {
+      case Axis.vertical:
+        return Offset(horizontal, vertical);
+      case Axis.horizontal:
+        return Offset(vertical, horizontal);
     }
   }
 
@@ -163,6 +189,9 @@ class GridGalleryState extends State<GridGallery>
 
     final item = _items[_dragIndex]!;
 
+    item.isDragging = true;
+    item.rebuild();
+
     _targetIndex = item.index;
 
     _drag = GalleryItemDrag(
@@ -176,10 +205,15 @@ class GridGalleryState extends State<GridGallery>
     _draggingOverlay = OverlayEntry(builder: _drag!.buildOverlay);
     Overlay.of(context)?.insert(_draggingOverlay!);
 
-    for (final childItem in _items.values) {
-      // if (childItem == item || !childItem.mounted) continue;
-      childItem.updateDrag(_targetIndex!, _targetIndex!, true, animate: false);
-    }
+    // for (final childItem in _items.values) {
+    //   if (childItem == item || !childItem.mounted) continue;
+    //   childItem.updateDragGap(
+    //     gapIndex: _targetIndex!,
+    //     gapSize: _drag!.itemSize,
+    //     backward: false,
+    //     playAnimation: false,
+    //   );
+    // }
     return _drag;
   }
 
@@ -188,7 +222,8 @@ class GridGalleryState extends State<GridGallery>
   /// [_items] should also be translated temporarily before [_onDragCompleted]
   void _onDragUpdate(GalleryItemDrag drag, Offset position, Offset delta) {
     _draggingOverlay?.markNeedsBuild();
-    _translateItems();
+    _translateItems(delta);
+    // setState(() {});
   }
 
   // TODO: allow more callbacks
@@ -247,46 +282,67 @@ class GridGalleryState extends State<GridGallery>
   /// while the real index is [GalleryItemWidgetState.index]
   /// so [_targetIndex] should be the item's real index
   /// but we compare their effective indexes between items and the dragging item during dragging
-  void _translateItems() {
+  void _translateItems(Offset delta) {
     assert(_drag != null);
+
+    final Offset pointer = _drag!.overlayPosition(context);
+    final Offset dragPosition = pointer + _drag!.itemSize.center(Offset.zero);
 
     int newTargetIndex = _targetIndex!;
 
     // find the item containing the the drag position as the drop target
     for (final item in _items.values) {
-      if (item.movingIndex == _dragIndex || !item.mounted) continue;
+      if (item.index == _dragIndex ||
+          !item.mounted ||
+          !item.isTransitionCompleted) continue;
 
-      Rect itemGeometry = item.geometry;
+      final Rect geometry = Rect.fromCenter(
+        center: item.geometry.center,
+        width: item.size!.width * 0.4,
+        height: item.size!.height * 0.4,
+      );
 
-      if (!item.isTransitionCompleted && item.movingIndex >= _dragIndex!) {
-        itemGeometry =
-            (itemGeometry.topLeft - item.transitionOffset) & itemGeometry.size;
-      }
-
-      if (itemGeometry.contains(_drag!.dragPosition)) {
+      if (geometry.contains(dragPosition)) {
         newTargetIndex = item.index;
+        break;
       }
     }
 
     assert(_dragIndex != null && _targetIndex != null);
-
     // update drag info for each if the drop target is not the dragging item
     if (newTargetIndex != _targetIndex) {
-      _targetIndex = newTargetIndex;
+      final TranslateDirection direction = _targetIndex! < newTargetIndex
+          ? TranslateDirection.forward
+          : TranslateDirection.backward;
 
-      final int? start =
-          _dragIndex! > _targetIndex! ? _targetIndex : _dragIndex;
-      final int? end = _dragIndex! > _targetIndex! ? _dragIndex : _targetIndex;
+      print(
+          'dragging: $_dragIndex: direction: $direction -> $_targetIndex -> new: $newTargetIndex');
+
+      int start = _targetIndex!;
+      int end = newTargetIndex;
+
+      if (direction == TranslateDirection.backward) {
+        start = newTargetIndex;
+        end = _targetIndex!;
+      }
 
       for (final item in _items.values) {
-        item.updateDrag(start!, end!, false);
+        if (item.index == _dragIndex! || !item.mounted) continue;
+        item.updateDragGap(
+          gapSize: _drag!.itemSize,
+          start: start,
+          end: end,
+          direction: direction,
+        );
       }
+
+      _targetIndex = newTargetIndex;
     }
   }
 
   void _resetItemTranslation() {
     for (final item in _items.values) {
-      item.resetTranslation();
+      item.reset();
     }
   }
 }
