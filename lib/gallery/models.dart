@@ -9,13 +9,14 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
   Offset startOffset = Offset.zero;
   Offset targetOffset = Offset.zero;
 
+  late int movingIndex = index;
+
   int get index;
   Curve get curve;
   AnimationController? get animation;
   set animation(AnimationController? value);
 
-  bool get isTransitionEnd =>
-      animation == null || animation!.status == AnimationStatus.completed;
+  bool get isTransitionEnd => animation == null;
 
   Offset get offset {
     if (animation != null) {
@@ -35,31 +36,43 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
     return itemPosition & size!;
   }
 
-  void updateDragGap({
-    required Size gapSize,
-    required int start,
-    required int end,
-    required TranslateDirection direction,
-    bool playAnimation = true,
-  }) {
-    final Offset newTargetOffset = translate(
-      start: start,
-      end: end,
-      direction: direction,
-      gapSize: gapSize,
-    );
+  Rect get translatedGeometry {
+    return geometry.translate(targetOffset.dx, targetOffset.dy);
+  }
 
-    if (newTargetOffset != targetOffset) {
-      targetOffset = newTargetOffset;
-
-      if (playAnimation) {
-        animate();
-      } else {
-        jump();
-      }
-
-      rebuild();
+  void apply([bool playAnimation = true]) {
+    if (playAnimation) {
+      animate();
+    } else {
+      jump();
     }
+    rebuild();
+  }
+
+  void translateTo({required int moving, required Size gapSize}) {
+    movingIndex = moving;
+
+    final Offset original = gridState.calculateItemCoordinate(index);
+    final Offset target = gridState.calculateItemCoordinate(movingIndex);
+
+    final Axis mainAxis = gridState.widget.scrollDirection;
+
+    double verticalSpacing = 0.0;
+    double horizontalSpacing = 0.0;
+
+    switch (mainAxis) {
+      case Axis.vertical:
+        verticalSpacing = gridState.mainAxisSpacing;
+        horizontalSpacing = gridState.crossAxisSpacing;
+        break;
+      case Axis.horizontal:
+        verticalSpacing = gridState.crossAxisSpacing;
+        horizontalSpacing = gridState.mainAxisSpacing;
+        break;
+    }
+
+    targetOffset = (target - original).scale(
+        gapSize.width + horizontalSpacing, gapSize.height + verticalSpacing);
   }
 
   Offset translate({
@@ -73,18 +86,21 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
     if (needTranslate) {
       final Offset current = gridState.calculateItemCoordinate(index);
 
-      int nextIndex = index;
+      // int nextIndex = movingIndex;
 
       switch (direction) {
         case TranslateDirection.forward:
-          nextIndex = (index - 1) >= start ? index - 1 : index + end - start;
+          movingIndex = (movingIndex - 1) >= start
+              ? movingIndex - 1
+              : index + end - start;
           break;
         case TranslateDirection.backward:
-          nextIndex = (index + 1) <= end ? index + 1 : index - end + start;
+          movingIndex =
+              (movingIndex + 1) <= end ? movingIndex + 1 : index - end + start;
           break;
       }
 
-      final Offset target = gridState.calculateItemCoordinate(nextIndex);
+      final Offset target = gridState.calculateItemCoordinate(movingIndex);
 
       final Axis mainAxis = gridState.widget.scrollDirection;
 
@@ -105,7 +121,7 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
       return (target - current).scale(
           gapSize.width + horizontalSpacing, gapSize.height + verticalSpacing);
     } else {
-      return startOffset;
+      return targetOffset;
     }
   }
 
@@ -114,7 +130,7 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
       animation = AnimationController(
         vsync: gridState,
         duration: const Duration(
-          milliseconds: 200,
+          milliseconds: 100,
         ),
       )
         ..addListener(rebuild)
@@ -123,6 +139,7 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
             startOffset = targetOffset;
             animation?.dispose();
             animation = null;
+            rebuild();
           }
         })
         ..forward();
@@ -149,6 +166,7 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
     startOffset = Offset.zero;
     targetOffset = Offset.zero;
     isDragging = false;
+    movingIndex = index;
     rebuild();
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/gallery/gallery_drag.dart';
@@ -223,7 +225,7 @@ class GridGalleryState extends State<GridGallery>
   void _onDragUpdate(GalleryItemDrag drag, Offset position, Offset delta) {
     _draggingOverlay?.markNeedsBuild();
     _translateItems(delta);
-    // setState(() {});
+    setState(() {});
   }
 
   // TODO: allow more callbacks
@@ -290,6 +292,7 @@ class GridGalleryState extends State<GridGallery>
 
     int newTargetIndex = _targetIndex!;
 
+    // print('----------pointer: $pointer, center: $dragPosition');
     // find the item containing the the drag position as the drop target
     for (final item in _items.values) {
       if (item.index == _dragIndex ||
@@ -297,13 +300,14 @@ class GridGalleryState extends State<GridGallery>
           !item.isTransitionCompleted) continue;
 
       final Rect geometry = Rect.fromCenter(
-        center: item.geometry.center,
-        width: item.size!.width * 0.4,
-        height: item.size!.height * 0.4,
+        center: item.translatedGeometry.center,
+        width: item.size!.width * 0.5,
+        height: item.size!.height * 0.5,
       );
 
       if (geometry.contains(dragPosition)) {
         newTargetIndex = item.index;
+
         break;
       }
     }
@@ -311,38 +315,58 @@ class GridGalleryState extends State<GridGallery>
     assert(_dragIndex != null && _targetIndex != null);
     // update drag info for each if the drop target is not the dragging item
     if (newTargetIndex != _targetIndex) {
-      final TranslateDirection direction = _targetIndex! < newTargetIndex
-          ? TranslateDirection.forward
-          : TranslateDirection.backward;
-
-      print(
-          'dragging: $_dragIndex: direction: $direction -> $_targetIndex -> new: $newTargetIndex');
-
       int start = _targetIndex!;
       int end = newTargetIndex;
 
-      if (direction == TranslateDirection.backward) {
-        start = newTargetIndex;
-        end = _targetIndex!;
+      _targetIndex = newTargetIndex;
+
+      print('start: $start, end: $end');
+
+      final bool backward = start < end;
+      while (start != end) {
+        _swap(start, end);
+
+        if (backward) {
+          start++;
+        } else {
+          start--;
+        }
       }
 
       for (final item in _items.values) {
-        if (item.index == _dragIndex! || !item.mounted) continue;
-        item.updateDragGap(
-          gapSize: _drag!.itemSize,
-          start: start,
-          end: end,
-          direction: direction,
-        );
+        item.apply();
       }
-
-      _targetIndex = newTargetIndex;
     }
+  }
+
+  void _swap(int from, int to) {
+    final fromItem = _items[from]!;
+    final toItem = _items[to]!;
+
+    final fromMoving = fromItem.movingIndex;
+    final toMoving = toItem.movingIndex;
+
+    fromItem.translateTo(
+      gapSize: _drag!.itemSize,
+      moving: toMoving,
+    );
+
+    toItem.translateTo(
+      gapSize: _drag!.itemSize,
+      moving: fromMoving,
+    );
   }
 
   void _resetItemTranslation() {
     for (final item in _items.values) {
       item.reset();
     }
+  }
+
+  late List<int> temporaryPosition =
+      List.generate(widget.galleries.length, (index) => index);
+
+  void syncTemporaryIndex(int index, int nextIndex) {
+    temporaryPosition[index] = nextIndex;
   }
 }
