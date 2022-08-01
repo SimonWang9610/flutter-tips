@@ -40,7 +40,13 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
     return geometry.translate(targetOffset.dx, targetOffset.dy);
   }
 
-  void apply([bool playAnimation = true]) {
+  void apply({
+    required int moving,
+    required Size gapSize,
+    bool playAnimation = true,
+  }) {
+    translateTo(moving: moving, gapSize: gapSize);
+
     if (playAnimation) {
       animate();
     } else {
@@ -53,7 +59,7 @@ mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
     movingIndex = moving;
 
     final Offset original = gridState.calculateItemCoordinate(index);
-    final Offset target = gridState.calculateItemCoordinate(movingIndex);
+    final Offset target = gridState.calculateItemCoordinate(moving);
 
     final Axis mainAxis = gridState.widget.scrollDirection;
 

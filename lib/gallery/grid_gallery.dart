@@ -287,6 +287,7 @@ class GridGalleryState extends State<GridGallery>
   void _translateItems(Offset delta) {
     assert(_drag != null);
 
+    final Size gapSize = _drag!.itemSize;
     final Offset pointer = _drag!.overlayPosition(context);
     final Offset dragPosition = pointer + _drag!.itemSize.center(Offset.zero);
 
@@ -300,14 +301,13 @@ class GridGalleryState extends State<GridGallery>
           !item.isTransitionCompleted) continue;
 
       final Rect geometry = Rect.fromCenter(
-        center: item.translatedGeometry.center,
+        center: item.geometry.center,
         width: item.size!.width * 0.5,
         height: item.size!.height * 0.5,
       );
 
       if (geometry.contains(dragPosition)) {
         newTargetIndex = item.index;
-
         break;
       }
     }
@@ -315,46 +315,33 @@ class GridGalleryState extends State<GridGallery>
     assert(_dragIndex != null && _targetIndex != null);
     // update drag info for each if the drop target is not the dragging item
     if (newTargetIndex != _targetIndex) {
-      int start = _targetIndex!;
-      int end = newTargetIndex;
-
+      final bool backward = _dragIndex! < newTargetIndex;
       _targetIndex = newTargetIndex;
 
-      print('start: $start, end: $end');
-
-      final bool backward = start < end;
-      while (start != end) {
-        _swap(start, end);
-
-        if (backward) {
-          start++;
-        } else {
-          start--;
-        }
-      }
+      print(
+          'backward => $backward, dragging: $_dragIndex, target: $newTargetIndex');
 
       for (final item in _items.values) {
-        item.apply();
+        if (item.index == _dragIndex!) {
+          item.apply(moving: _targetIndex!, gapSize: gapSize);
+          continue;
+        }
+
+        if (backward) {
+          if (item.index > _dragIndex! && item.index <= _targetIndex!) {
+            item.apply(moving: item.index - 1, gapSize: gapSize);
+          } else {
+            item.apply(moving: item.index, gapSize: gapSize);
+          }
+        } else {
+          if (item.index >= _targetIndex! && item.index < _dragIndex!) {
+            item.apply(moving: item.index + 1, gapSize: gapSize);
+          } else {
+            item.apply(moving: item.index, gapSize: gapSize);
+          }
+        }
       }
     }
-  }
-
-  void _swap(int from, int to) {
-    final fromItem = _items[from]!;
-    final toItem = _items[to]!;
-
-    final fromMoving = fromItem.movingIndex;
-    final toMoving = toItem.movingIndex;
-
-    fromItem.translateTo(
-      gapSize: _drag!.itemSize,
-      moving: toMoving,
-    );
-
-    toItem.translateTo(
-      gapSize: _drag!.itemSize,
-      moving: fromMoving,
-    );
   }
 
   void _resetItemTranslation() {
