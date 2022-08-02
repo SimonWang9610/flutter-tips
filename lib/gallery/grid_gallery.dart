@@ -296,9 +296,10 @@ class GridGalleryState extends State<GridGallery>
     // print('----------pointer: $pointer, center: $dragPosition');
     // find the item containing the the drag position as the drop target
     for (final item in _items.values) {
-      if (item.index == _dragIndex ||
-          !item.mounted ||
-          !item.isTransitionCompleted) continue;
+      // if (item.index == _dragIndex ||
+      //     !item.mounted ||
+      //     !item.isTransitionCompleted) continue;
+      if (!item.mounted || !item.isTransitionCompleted) continue;
 
       final Rect geometry = Rect.fromCenter(
         center: item.geometry.center,
@@ -322,6 +323,7 @@ class GridGalleryState extends State<GridGallery>
           'backward => $backward, dragging: $_dragIndex, target: $newTargetIndex');
 
       for (final item in _items.values) {
+        // TODO: if the item at the target index is not the drag index, should also apply new index
         if (item.index == _dragIndex!) {
           item.apply(moving: _targetIndex!, gapSize: gapSize);
           continue;
