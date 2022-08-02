@@ -1,10 +1,9 @@
-import 'dart:math';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/gallery/gallery_drag.dart';
 import 'package:flutter_tips/gallery/gallery_item.dart';
-import 'package:flutter_tips/gallery/models.dart';
+
+typedef GalleryItemBuilder = Widget Function();
 
 class GridGallery extends StatefulWidget {
   final int crossAxisCount;
@@ -12,8 +11,10 @@ class GridGallery extends StatefulWidget {
   final double mainAxisSpacing;
   final double crossAxisSpacing;
   final double childAspectRatio;
-  final int maxCount;
+  final int? maxCount;
   final Axis scrollDirection;
+  final Curve curve;
+  final GalleryItemBuilder? addGallery;
   const GridGallery({
     Key? key,
     required this.galleries,
@@ -22,7 +23,9 @@ class GridGallery extends StatefulWidget {
     this.childAspectRatio = 1.0,
     this.crossAxisSpacing = 5.0,
     this.mainAxisSpacing = 5.0,
-    this.maxCount = 9,
+    this.maxCount,
+    this.curve = Curves.easeIn,
+    this.addGallery,
   }) : super(key: key);
 
   @override
@@ -42,36 +45,18 @@ class GridGallery extends StatefulWidget {
 }
 
 class GridGalleryState extends State<GridGallery>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, GalleryGridDragDelegate {
   final Map<int, GalleryItemWidgetState> _items = {};
 
-  /// [_draggingOverlay] used to display the dragging [GalleryItem]
-  OverlayEntry? _draggingOverlay;
+  @override
+  Map<int, GalleryItemWidgetState> get items => _items;
 
-  /// [_recognizer] used to detect the drag gesture and trigger [_startDrag] when [MultiDragGestureRecognizer.onStart]
-  MultiDragGestureRecognizer? _recognizer;
-
-  /// [_drag] used to track the last drag operation
-  /// also responsible for listening to [_onDragUpdate], [_onDragCompleted]
-  /// [_onDragCancel] and [_onDragEnd]
-  GalleryItemDrag? _drag;
-
-  /// the index of the item dragging
-  /// it would be reset after [_onDragCompleted]
-  int? _dragIndex;
-
-  /// the index that the dragging item will be inserted into after [_onDragCompleted]
-  int? _targetIndex;
-
-  Offset? _finalDropPosition;
-  Offset? get finalDropPosition => _finalDropPosition;
-
-  int get crossAxisCount => widget.crossAxisCount;
-  int get maxCount => widget.maxCount;
-  int get totalItem => widget.galleries.length;
-  double get crossAxisSpacing => widget.crossAxisSpacing;
-  double get mainAxisSpacing => widget.mainAxisSpacing;
+  @override
   List<Widget> get galleries => widget.galleries;
+
+  bool get canAddGallery =>
+      widget.addGallery != null &&
+      (widget.maxCount == null || galleries.length < widget.maxCount!);
 
   @override
   Widget build(BuildContext context) {
@@ -88,27 +73,11 @@ class GridGalleryState extends State<GridGallery>
           GalleryItemWidget(
             key: ValueKey(i),
             index: i,
+            curve: widget.curve,
             child: widget.galleries[i],
           ),
-        if (widget.galleries.length < widget.maxCount) _addItem(),
+        if (canAddGallery) widget.addGallery!.call(),
       ],
-    );
-  }
-
-  Widget _addItem() {
-    return IconButton(
-      key: const ValueKey('AddItem'),
-      onPressed: () {
-        final length = widget.galleries.length;
-
-        final gallery = Text('$length');
-
-        widget.galleries.add(gallery);
-        setState(() {});
-      },
-      icon: const Icon(
-        Icons.add,
-      ),
     );
   }
 
@@ -138,8 +107,8 @@ class GridGalleryState extends State<GridGallery>
   /// |
   /// y
   Offset calculateItemCoordinate(int itemIndex) {
-    final vertical = (itemIndex ~/ crossAxisCount).toDouble();
-    final horizontal = (itemIndex % crossAxisCount).toDouble();
+    final vertical = (itemIndex ~/ widget.crossAxisCount).toDouble();
+    final horizontal = (itemIndex % widget.crossAxisCount).toDouble();
 
     switch (widget.scrollDirection) {
       case Axis.vertical:
@@ -158,7 +127,7 @@ class GridGalleryState extends State<GridGallery>
   }) {
     assert(index >= 0 && index < widget.galleries.length);
 
-    cleanDragIfNecessary(event);
+    _cleanDragIfNecessary(event);
 
     if (_items.containsKey(index)) {
       _dragIndex = index;
@@ -170,18 +139,31 @@ class GridGalleryState extends State<GridGallery>
           'Attempting to start a drag on a non-visible item: $index');
     }
   }
+}
 
-  /// clean the previous drag operation
-  void cleanDragIfNecessary(PointerDownEvent event) {
-    if (_drag != null) {
-      // cancel the previous drag
-      _resetDrag();
-    } else if (_recognizer != null) {
-      // reset the previous recognizer
-      _recognizer?.dispose();
-      _recognizer = null;
-    }
-  }
+mixin GalleryGridDragDelegate<T extends StatefulWidget>
+    on State<T>, TickerProvider {
+  Map<int, GalleryItemWidgetState> get items;
+  List<Widget> get galleries;
+
+  /// [_recognizer] used to detect the drag gesture and trigger [_startDrag] when [MultiDragGestureRecognizer.onStart]
+  MultiDragGestureRecognizer? _recognizer;
+
+  /// [_draggingOverlay] used to display the dragging [GalleryItem]
+  OverlayEntry? _draggingOverlay;
+
+  /// [_drag] used to track the last drag operation
+  /// also responsible for listening to [_onDragUpdate], [_onDragCompleted]
+  /// [_onDragCancel] and [_onDragEnd]
+  GalleryItemDrag? _drag;
+
+  /// the index of the item dragging
+  /// it would be reset after [_onDragCompleted]
+  int? _dragIndex;
+
+  /// the index that the dragging item will be inserted into after [_onDragCompleted] and [_onDragUpdate]
+  /// eventually swap the [_dragIndex] and [_targetIndex] after [_onDragCompleted]
+  int? _targetIndex;
 
   /// 1) register [_drag] to handle [_onDragCancel], [_onDragUpdate] and [_onDragEnd]
   /// 2) also build [_draggingOverlay] to display the dragging item
@@ -189,7 +171,7 @@ class GridGalleryState extends State<GridGallery>
   Drag? _startDrag(Offset position) {
     assert(_drag == null);
 
-    final item = _items[_dragIndex]!;
+    final item = items[_dragIndex]!;
 
     item.isDragging = true;
     item.rebuild();
@@ -207,15 +189,6 @@ class GridGalleryState extends State<GridGallery>
     _draggingOverlay = OverlayEntry(builder: _drag!.buildOverlay);
     Overlay.of(context)?.insert(_draggingOverlay!);
 
-    // for (final childItem in _items.values) {
-    //   if (childItem == item || !childItem.mounted) continue;
-    //   childItem.updateDragGap(
-    //     gapIndex: _targetIndex!,
-    //     gapSize: _drag!.itemSize,
-    //     backward: false,
-    //     playAnimation: false,
-    //   );
-    // }
     return _drag;
   }
 
@@ -245,11 +218,23 @@ class GridGalleryState extends State<GridGallery>
 
     print('drag completed: $fromIndex -> $toIndex ');
 
-    final gallery = widget.galleries.removeAt(fromIndex);
+    final gallery = galleries.removeAt(fromIndex);
 
-    widget.galleries.insert(toIndex, gallery);
+    galleries.insert(toIndex, gallery);
 
     _resetDrag();
+  }
+
+  /// clean the previous drag operation
+  void _cleanDragIfNecessary(PointerDownEvent event) {
+    if (_drag != null) {
+      // cancel the previous drag
+      _resetDrag();
+    } else if (_recognizer != null) {
+      // reset the previous recognizer
+      _recognizer?.dispose();
+      _recognizer = null;
+    }
   }
 
   /// no matter [_drag] is completed or canceled
@@ -261,8 +246,8 @@ class GridGalleryState extends State<GridGallery>
   /// and unmatched index between [GalleryItemWidgetState.index] and [GalleryItemWidgetState.movingIndex]
   void _resetDrag() {
     if (_drag != null) {
-      if (_dragIndex != null && _items.containsKey(_dragIndex)) {
-        final item = _items[_dragIndex]!;
+      if (_dragIndex != null && items.containsKey(_dragIndex)) {
+        final item = items[_dragIndex]!;
         item.rebuild();
         _dragIndex = null;
       }
@@ -273,17 +258,22 @@ class GridGalleryState extends State<GridGallery>
       _recognizer = null;
       _draggingOverlay?.remove();
       _draggingOverlay = null;
-      _finalDropPosition = null;
       _targetIndex = null;
     }
 
     setState(() {});
   }
 
-  /// when dragging, the effective index is [GalleryItemWidgetState.movingIndex]
-  /// while the real index is [GalleryItemWidgetState.index]
-  /// so [_targetIndex] should be the item's real index
-  /// but we compare their effective indexes between items and the dragging item during dragging
+  /// for each drag update, we detect whose [Rect] contains the drag position
+  /// and set [_targetIndex] as [GalleryItemWidget.index]
+  /// then we will calculate the effective index for each item
+  /// 1) if [_dragIndex] is less than [_targetIndex],
+  /// all items whose index is between (_dragIndex, _targetIndex] should be forwarded by index -1,
+  /// while others should be restored to their original index wherever they are translated before previous drag updates
+  ///
+  /// 2) if [_dragIndex] is greater than [_targetIndex]
+  /// all items whose index is between  [_targetIndex, _dragIndex) should be backward by index + 1, while
+  /// other items will be restored
   void _translateItems(Offset delta) {
     assert(_drag != null);
 
@@ -295,7 +285,7 @@ class GridGalleryState extends State<GridGallery>
 
     // print('----------pointer: $pointer, center: $dragPosition');
     // find the item containing the the drag position as the drop target
-    for (final item in _items.values) {
+    for (final item in items.values) {
       // if (item.index == _dragIndex ||
       //     !item.mounted ||
       //     !item.isTransitionCompleted) continue;
@@ -316,20 +306,20 @@ class GridGalleryState extends State<GridGallery>
     assert(_dragIndex != null && _targetIndex != null);
     // update drag info for each if the drop target is not the dragging item
     if (newTargetIndex != _targetIndex) {
-      final bool backward = _dragIndex! < newTargetIndex;
+      final bool forward = _dragIndex! < newTargetIndex;
       _targetIndex = newTargetIndex;
 
       print(
-          'backward => $backward, dragging: $_dragIndex, target: $newTargetIndex');
+          'backward => $forward, dragging: $_dragIndex, target: $newTargetIndex');
 
-      for (final item in _items.values) {
+      for (final item in items.values) {
         // TODO: if the item at the target index is not the drag index, should also apply new index
         if (item.index == _dragIndex!) {
           item.apply(moving: _targetIndex!, gapSize: gapSize);
           continue;
         }
 
-        if (backward) {
+        if (forward) {
           if (item.index > _dragIndex! && item.index <= _targetIndex!) {
             item.apply(moving: item.index - 1, gapSize: gapSize);
           } else {
@@ -347,15 +337,8 @@ class GridGalleryState extends State<GridGallery>
   }
 
   void _resetItemTranslation() {
-    for (final item in _items.values) {
+    for (final item in items.values) {
       item.reset();
     }
-  }
-
-  late List<int> temporaryPosition =
-      List.generate(widget.galleries.length, (index) => index);
-
-  void syncTemporaryIndex(int index, int nextIndex) {
-    temporaryPosition[index] = nextIndex;
   }
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/gallery/models.dart';
 import 'grid_gallery.dart';
 
 class GalleryItemWidget extends StatefulWidget {
@@ -90,11 +89,6 @@ class GalleryItemWidgetState extends State<GalleryItemWidget>
             border: Border.all(),
           ),
           child: Align(
-            // alignment: Alignment.topLeft +
-            //     Alignment(
-            //       index / gridState.totalItem * 2,
-            //       index / gridState.totalItem * 2,
-            //     ),
             child: widget.child,
           ),
         ),
@@ -137,5 +131,133 @@ class GalleryItemDragStartListener extends StatelessWidget {
       event: event,
       recognizer: createRecognizer()..gestureSettings = gestureSetting,
     );
+  }
+}
+
+mixin GalleryItemDragDelegate<T extends StatefulWidget> on State<T> {
+  late GridGalleryState gridState;
+  bool isDragging = false;
+
+  Size? size;
+  Offset startOffset = Offset.zero;
+  Offset targetOffset = Offset.zero;
+
+  int get index;
+  Curve get curve;
+  AnimationController? get animation;
+  set animation(AnimationController? value);
+
+  bool get isTransitionEnd => animation == null;
+
+  Offset get offset {
+    if (animation != null) {
+      final double t = curve.transform(animation!.value);
+
+      return Offset.lerp(startOffset, targetOffset, t)!;
+    }
+    return targetOffset;
+  }
+
+  /// return the original [RenderBox]'s top-left
+  /// the effective geometry should be (itemPosition - targetOffset) & size!
+  Rect get geometry {
+    final box = context.findRenderObject() as RenderBox;
+    final Offset itemPosition = box.localToGlobal(Offset.zero);
+
+    size = box.size;
+
+    return itemPosition & size!;
+  }
+
+  Rect get translatedGeometry {
+    return geometry.translate(targetOffset.dx, targetOffset.dy);
+  }
+
+  void apply({
+    required int moving,
+    required Size gapSize,
+    bool playAnimation = true,
+  }) {
+    translateTo(moving: moving, gapSize: gapSize);
+
+    if (playAnimation) {
+      animate();
+    } else {
+      jump();
+    }
+    rebuild();
+  }
+
+  void translateTo({required int moving, required Size gapSize}) {
+    if (index == moving) {
+      targetOffset = Offset.zero;
+      return;
+    }
+
+    final Offset original = gridState.calculateItemCoordinate(index);
+    final Offset target = gridState.calculateItemCoordinate(moving);
+
+    final Axis mainAxis = gridState.widget.scrollDirection;
+
+    double verticalSpacing = 0.0;
+    double horizontalSpacing = 0.0;
+
+    switch (mainAxis) {
+      case Axis.vertical:
+        verticalSpacing = gridState.widget.mainAxisSpacing;
+        horizontalSpacing = gridState.widget.crossAxisSpacing;
+        break;
+      case Axis.horizontal:
+        verticalSpacing = gridState.widget.crossAxisSpacing;
+        horizontalSpacing = gridState.widget.mainAxisSpacing;
+        break;
+    }
+
+    targetOffset = (target - original).scale(
+        gapSize.width + horizontalSpacing, gapSize.height + verticalSpacing);
+  }
+
+  void animate() {
+    if (animation == null) {
+      animation = AnimationController(
+        vsync: gridState,
+        duration: const Duration(
+          milliseconds: 100,
+        ),
+      )
+        ..addListener(rebuild)
+        ..addStatusListener((status) {
+          if (status == AnimationStatus.completed) {
+            startOffset = targetOffset;
+            animation?.dispose();
+            animation = null;
+            rebuild();
+          }
+        })
+        ..forward();
+    } else {
+      startOffset = offset;
+      animation?.forward(from: 0);
+    }
+  }
+
+  void jump() {
+    animation?.dispose();
+    animation = null;
+    startOffset = targetOffset;
+    // rebuild();
+  }
+
+  void rebuild() {
+    setState(() {});
+  }
+
+  void reset() {
+    animation?.dispose();
+    animation = null;
+    startOffset = Offset.zero;
+    targetOffset = Offset.zero;
+    isDragging = false;
+    rebuild();
   }
 }

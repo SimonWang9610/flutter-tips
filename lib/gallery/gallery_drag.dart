@@ -59,6 +59,7 @@ class GalleryItemDrag extends Drag {
     onDragCancel?.call(this);
   }
 
+  /// get the top-left position of the dragging item
   Offset overlayPosition(BuildContext context) {
     return dragPosition - dragOffset - _overlayOrigin(context);
   }
