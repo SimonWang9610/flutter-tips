@@ -158,7 +158,6 @@ class CarouselSliderState extends State<CarouselSlider> {
                 BoxConstraints.tightFor(width: width, height: height);
             break;
         }
-        print('constrains: $specificConstraints');
 
         return Align(
           child: ConstrainedBox(

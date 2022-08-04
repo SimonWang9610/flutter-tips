@@ -23,7 +23,7 @@ class CloudPlanet extends StatefulWidget {
 class _CloudPlanetState extends State<CloudPlanet>
     with SingleTickerProviderStateMixin {
   late final AnimationController velocityController;
-  late final PlanetData data;
+  late final PlanetController controller;
 
   Offset _velocityPerSecond = Offset.zero;
 
@@ -31,7 +31,7 @@ class _CloudPlanetState extends State<CloudPlanet>
   void initState() {
     super.initState();
 
-    data = PlanetData(items: widget.items);
+    controller = PlanetController(items: widget.items);
     velocityController = AnimationController(
       vsync: this,
       duration: widget.velocity,
@@ -40,7 +40,7 @@ class _CloudPlanetState extends State<CloudPlanet>
 
   @override
   void dispose() {
-    data.dispose();
+    controller.dispose();
     velocityController.dispose();
     super.dispose();
   }
@@ -54,21 +54,21 @@ class _CloudPlanetState extends State<CloudPlanet>
         return const SizedBox.shrink();
       }
 
-      data.setRadius(radius);
+      controller.setRadius(radius);
 
       return GestureDetector(
         behavior: HitTestBehavior.translucent,
         onPanUpdate: (details) {
           final delta = details.delta;
-          data.updateCoordinateForItems(delta);
+          controller.updateCoordinateForItems(delta);
         },
         onPanEnd: _onPanEnd,
         child: SizedBox.square(
-          dimension: data.effectiveRadius * 2,
+          dimension: controller.effectiveRadius * 2,
           child: Stack(
             alignment: Alignment.center,
             children: [
-              for (final item in data.items) item.widget,
+              for (final item in controller.items) item.widget,
             ],
           ),
         ),
@@ -91,6 +91,6 @@ class _CloudPlanetState extends State<CloudPlanet>
   void _decreasingVelocityByTick() {
     final delta =
         Offset.lerp(_velocityPerSecond, Offset.zero, velocityController.value);
-    data.updateCoordinateForItems(delta!);
+    controller.updateCoordinateForItems(delta!);
   }
 }

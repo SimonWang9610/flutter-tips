@@ -100,7 +100,7 @@ class PlanetItem extends PlanetValueNotifier {
     notifyListener();
   }
 
-  /// when the [PlanetData.effectiveRadius] changes
+  /// when the [PlanetController.effectiveRadius] changes
   ///  all [PlanetItem] should also resize
   void resizeRadius(double newRadius) {
     final scale = newRadius / radius;
@@ -110,14 +110,14 @@ class PlanetItem extends PlanetValueNotifier {
   }
 }
 
-class PlanetData {
+class PlanetController {
   final List<PlanetItem> items;
   final RotationAngles rotationAngles;
 
   double effectiveRadius;
   bool initialized;
 
-  PlanetData({
+  PlanetController({
     required this.items,
     double speed = 1.0,
     double factor = 0.5,
@@ -167,13 +167,12 @@ class PlanetData {
     if (zAngle == 0) return;
 
     rotationAngles.update(x: xAngle, y: yAngle, z: zAngle);
+    final transformations = Matrix4.rotationX(rotationAngles.xAngle) *
+        Matrix4.rotationY(rotationAngles.yAngle) *
+        Matrix4.rotationZ(rotationAngles.zAngle);
 
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
-
-      final transformations = Matrix4.rotationX(rotationAngles.xAngle) *
-          Matrix4.rotationY(rotationAngles.yAngle) *
-          Matrix4.rotationZ(rotationAngles.zAngle);
 
       // item.vector.applyMatrix4(transformations);
       item.applyTransform(transformations);
@@ -197,6 +196,23 @@ class SphericalAngle {
     required this.theta,
   });
 
+  factory SphericalAngle.zero() => SphericalAngle(phi: 0, theta: 0);
+
+  factory SphericalAngle.index(int index, int total) {
+    final goldenAngle = (3.0 - sqrt(5)) * pi;
+
+    final phi = acos(1 - 2 * index / total);
+
+    final theta = goldenAngle * index;
+
+    return SphericalAngle(phi: phi, theta: theta);
+  }
+
+  factory SphericalAngle.random() {
+    return SphericalAngle(
+        phi: Random().nextDouble() * pi, theta: Random().nextDouble() * 2 * pi);
+  }
+
   SphericalAngle copyWith({double? theta, double? phi}) {
     return SphericalAngle(
       phi: phi ?? this.phi,
@@ -206,20 +222,6 @@ class SphericalAngle {
 
   SphericalAngle add({double thetaDelta = 0.0, double phiDelta = 0.0}) {
     return SphericalAngle(phi: phi + phiDelta, theta: theta + thetaDelta);
-  }
-
-  factory SphericalAngle.zero() => SphericalAngle(phi: 0, theta: 0);
-
-  factory SphericalAngle.index(int index, int total) {
-    final phi = acos(-1.0 + (2.0 * index - 1.0) / total);
-    final theta = sqrt(total * pi) * phi;
-
-    return SphericalAngle(phi: phi, theta: theta);
-  }
-
-  factory SphericalAngle.random() {
-    return SphericalAngle(
-        phi: Random().nextDouble() * pi, theta: Random().nextDouble() * 2 * pi);
   }
 }
 
