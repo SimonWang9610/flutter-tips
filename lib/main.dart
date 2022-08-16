@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tips/blocks/list_block.dart';
 import 'package:flutter_tips/blocks/list_data.dart';
 import 'package:flutter_tips/carousel/example.dart';
+import 'package:flutter_tips/exercises/example.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/gallery/example.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
@@ -33,7 +34,9 @@ class MyApp extends StatelessWidget {
         // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const CloudPlanetExample(),
+      home: const MyHomePage(
+        title: 'my home page',
+      ),
     );
   }
 }
@@ -78,42 +81,15 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 30,
-            vertical: 20,
-          ),
-          child: DecoratedBox(
-            decoration: BoxDecoration(border: Border.all()),
-            child: SizedBox(
-              width: 100,
-              child: Column(
-                children: [
-                  GestureTest(
-                    label: 'first',
-                    onTap: _translate,
-                  ),
-                  Transform.translate(
-                    offset: Offset(shift, shift),
-                    child: GestureTest(
-                      label: 'second',
-                      onTap: _translate,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      body: TestInherited(
+        child: TestUpdateState(title: 'TestUpdateState'),
       ),
+      // body: const TestUpdateState(title: 'TestUpdateState'),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          shift += 10.0;
-
-          setState(() {});
+          setState(() {
+            print('MyHome by setState');
+          });
         },
         tooltip: 'Increment',
         child: const Icon(Icons.add),
