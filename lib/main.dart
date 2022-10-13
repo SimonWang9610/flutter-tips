@@ -9,6 +9,7 @@ import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
 import 'package:flutter_tips/planet/example.dart';
+import 'package:flutter_tips/tree/minimal_tree_example.dart';
 
 void main() {
   runApp(const MyApp());
@@ -60,12 +61,10 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  @override
-  void initState() {
-    super.initState();
-  }
+  final first = FirstSwitch();
+  final second = SecondSwitch();
 
-  double shift = 0.0;
+  bool _showFirst = true;
 
   @override
   Widget build(BuildContext context) {
@@ -81,85 +80,38 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: TestInherited(
-        child: TestUpdateState(title: 'TestUpdateState'),
-      ),
-      // body: const TestUpdateState(title: 'TestUpdateState'),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() {
-            print('MyHome by setState');
-          });
-        },
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
-    );
-  }
-
-  void _translate() {
-    shift += 5.0;
-    setState(() {});
-  }
-}
-
-class DragTest extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  const DragTest({
-    Key? key,
-    required this.label,
-    this.onTap,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(),
-      ),
-      child: DragTarget<String>(
-        builder: (_, __, ___) {
-          return Draggable<String>(
-            data: label,
-            feedback: Text('Dragging $label'),
-            child: SizedBox.square(
-              dimension: 50,
-              child: Text(label),
-            ),
-          );
-        },
-        onAccept: (_) {
-          onTap?.call();
-        },
-      ),
-    );
-  }
-}
-
-class GestureTest extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap;
-  const GestureTest({
-    Key? key,
-    required this.label,
-    this.onTap,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(border: Border.all()),
-      child: SizedBox.square(
-        dimension: 50,
-        child: GestureDetector(
-          onTap: () {
-            print('tap: $label');
-            onTap?.call();
-          },
-          child: Text(label),
+      body: Center(
+        child: DecoratedBox(
+          decoration: BoxDecoration(border: Border.all()),
+          child: MinimalTreeExample(),
         ),
       ),
+      // body: Center(
+      //   child: SizedBox.square(
+      //     dimension: 100,
+      //     child: MinimalTreeExample(),
+      //   ),
+      // ),
     );
+  }
+}
+
+class FirstSwitch extends StatelessWidget {
+  const FirstSwitch({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    print("build first switch");
+    return const Text("First Switch");
+  }
+}
+
+class SecondSwitch extends StatelessWidget {
+  const SecondSwitch({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    print("build second switch");
+    return const Text("Second Switch");
   }
 }
