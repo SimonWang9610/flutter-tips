@@ -61,9 +61,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  final first = FirstSwitch();
-  final second = SecondSwitch();
-
   bool _showFirst = true;
 
   @override
@@ -81,10 +78,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: DecoratedBox(
-          decoration: BoxDecoration(border: Border.all()),
-          child: MinimalTreeExample(),
-        ),
+        child: const ScaledScrollView(),
       ),
       // body: Center(
       //   child: SizedBox.square(
@@ -96,22 +90,51 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class FirstSwitch extends StatelessWidget {
-  const FirstSwitch({Key? key}) : super(key: key);
+class ScaledScrollView extends StatefulWidget {
+  const ScaledScrollView({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    print("build first switch");
-    return const Text("First Switch");
-  }
+  State<ScaledScrollView> createState() => _ScaledScrollViewState();
 }
 
-class SecondSwitch extends StatelessWidget {
-  const SecondSwitch({Key? key}) : super(key: key);
+class _ScaledScrollViewState extends State<ScaledScrollView> {
+  final List<Widget> children = List.generate(
+    100,
+    (index) => Text(
+      "item $index",
+      textAlign: TextAlign.center,
+    ),
+  );
+
+  double _scaleY = 1.0;
+  double _scaleX = 1.0;
 
   @override
   Widget build(BuildContext context) {
-    print("build second switch");
-    return const Text("Second Switch");
+    return DecoratedBox(
+      decoration: BoxDecoration(border: Border.all()),
+      child: SingleChildScrollView(
+        child: GestureDetector(
+          onScaleStart: (details) {},
+          onScaleUpdate: (details) {
+            final vertical = details.verticalScale;
+            final horizontal = details.horizontalScale;
+            print("vertical: $vertical, horizontal: $horizontal");
+            _scaleX = horizontal;
+            _scaleY = vertical;
+            setState(() {});
+          },
+          onScaleEnd: (details) {},
+          child: Transform.scale(
+            scaleX: _scaleX,
+            scaleY: _scaleY,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
