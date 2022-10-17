@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'node.dart';
 import 'tree_view.dart';
 
+/// use [NodeBoxData] to allow [TreeView] to access the [BaseNode] associated with the widget
 class NodeWidget<T extends BaseNode> extends ParentDataWidget<NodeBoxData> {
   final T node;
 

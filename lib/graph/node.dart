@@ -6,7 +6,7 @@ import 'package:flutter_tips/graph/tree_view.dart';
 
 typedef NodeWidgetBuilder<T extends BaseNode> = Widget Function(T);
 
-class BaseNode {
+abstract class BaseNode {
   static void _propagateDepthToDescendants(BaseNode child, int parentDepth) {
     child.depth = parentDepth + 1;
 
@@ -15,8 +15,8 @@ class BaseNode {
     }
   }
 
-  static List<Widget> extractChildrenWidget(
-      BaseNode root, NodeWidgetBuilder builder) {
+  static List<Widget> extractChildrenWidget<T extends BaseNode>(
+      T root, NodeWidgetBuilder<T> builder) {
     final List<Widget> widgets = [];
 
     widgets.add(
@@ -27,32 +27,43 @@ class BaseNode {
     );
 
     /// depth first recursion
-    for (final node in root.children) {
+    for (final node in root.children.cast<T>()) {
       widgets.addAll(extractChildrenWidget(node, builder));
     }
 
     return widgets;
   }
 
+  /// unique identity for a node
   final String id;
 
+  /// child nodes
   final List<BaseNode> _children = [];
 
+  /// parent node of this node
   BaseNode? parent;
   int depth = 0;
 
+  bool _debugHasLaidout = false;
+
   Size _size = Size.zero;
-
-  /// the center position of the node widget
-  Offset _position = Offset.zero;
-
   double get height => _size.height;
   double get width => _size.width;
-  Offset get offset => _position - Alignment.center.alongSize(_size);
+  Size get size => _size;
 
   set size(Size value) {
     _size = value;
+    _debugHasLaidout = true;
   }
+
+  bool _debugHasNormalized = false;
+
+  Size _normalizedSize = Size.zero;
+  Size get normalizedSize => _normalizedSize;
+
+  /// the center position of the node widget
+  Offset _position = Offset.zero;
+  Offset get offset => _position - Alignment.center.alongSize(_size);
 
   BaseNode({required this.id});
 
@@ -78,6 +89,11 @@ class BaseNode {
     _propagateDepthToDescendants(value, depth);
   }
 
+  void removeChild(String id) {
+    _children.removeWhere((element) => element.id == id);
+  }
+
+  /// get the top-most root node
   BaseNode get rootNode {
     if (parent == null) {
       return this;
@@ -90,6 +106,40 @@ class BaseNode {
 
   List<BaseNode> get children => List.unmodifiable(_children);
 
+  void normalize({
+    required TreeDirection direction,
+    required double subtreeMainAxisSpacing,
+    required double subtreeCrossSpacing,
+    double scaleX = 1.0,
+    double scaleY = 1.0,
+  });
+
+  void positionNode(TreeViewDelegate delegate, Offset origin);
+
+  double getNormalizedMainAxis(TreeDirection direction);
+  double getNormalizedCrossAxis(TreeDirection direction);
+  double getMainAxis(TreeDirection direction);
+
+  void setNormalizedSize(
+      double mainAxis, double crossAxis, TreeDirection direction);
+  Offset calculateNormalizedBaseline(
+      TreeDirection direction, double mainAxisSpacing, double crossAxisSpacing);
+
+  bool isSameTree(BaseNode other) {
+    bool isSame = true;
+
+    if (this != other) {
+      isSame = false;
+    } else if (children.length != other.children.length) {
+      isSame = false;
+    } else {
+      for (int i = 0; i < children.length; i++) {
+        isSame = isSame && children[i].isSameTree(other.children[i]);
+      }
+    }
+    return isSame;
+  }
+
   @override
   bool operator ==(covariant BaseNode other) =>
       identical(this, other) || other.hashCode == hashCode;
@@ -99,16 +149,11 @@ class BaseNode {
 }
 
 class Node extends BaseNode with NodeLayout {
-  Node({required String id}) : super(id: id);
-
-  @override
-  Node get rootNode {
-    if (parent == null) {
-      return this;
-    } else {
-      return parent!.rootNode as Node;
-    }
-  }
+  final WidgetBuilder builder;
+  Node({
+    required String id,
+    required this.builder,
+  }) : super(id: id);
 
   @override
   String toString() {
@@ -117,19 +162,7 @@ class Node extends BaseNode with NodeLayout {
 }
 
 mixin NodeLayout on BaseNode {
-  bool _debugHasLaidout = false;
-
-  bool _debugHasNormalized = false;
-
   @override
-  set size(Size value) {
-    _size = value;
-    _debugHasLaidout = true;
-  }
-
-  Size _normalizedSize = Size.zero;
-  Size get normalizedSize => _normalizedSize;
-
   double getNormalizedMainAxis(TreeDirection direction) {
     assert(_debugHasNormalized);
     switch (direction) {
@@ -142,6 +175,7 @@ mixin NodeLayout on BaseNode {
     }
   }
 
+  @override
   double getNormalizedCrossAxis(TreeDirection direction) {
     assert(_debugHasNormalized);
     switch (direction) {
@@ -154,29 +188,81 @@ mixin NodeLayout on BaseNode {
     }
   }
 
+  @override
+  double getMainAxis(TreeDirection direction) {
+    assert(_debugHasLaidout);
+
+    switch (direction) {
+      case TreeDirection.top:
+      case TreeDirection.bottom:
+        return height;
+      case TreeDirection.left:
+      case TreeDirection.right:
+        return width;
+    }
+  }
+
+  double getMainAxisScale(
+      double scaleX, double scaleY, TreeDirection direction) {
+    switch (direction) {
+      case TreeDirection.top:
+      case TreeDirection.bottom:
+        return scaleY;
+      case TreeDirection.left:
+      case TreeDirection.right:
+        return scaleX;
+    }
+  }
+
+  double getCrossAxisScale(
+      double scaleX, double scaleY, TreeDirection direction) {
+    switch (direction) {
+      case TreeDirection.top:
+      case TreeDirection.bottom:
+        return scaleX;
+      case TreeDirection.left:
+      case TreeDirection.right:
+        return scaleY;
+    }
+  }
+
+  /// normalize the node size by depth first recursion
+  /// 1) if the node is a leaf node, there is nothing to do
+  /// 2) if the node has children, we must first normalize its all children
+  ///   so that we could regard all its subtree (rooted in its children) as a special leaf node
+  ///   therefore simplifying position processing
+  ///
+  /// when [setNormalizedSize], [direction] will determine how to set the normalized size using [mainAxis] and [crossAxis]:
+  /// for [TreeDirection.top] and [TreeDirection.bottom], [subtreeMainAxisSpacing works on the vertical (dy)
+  ///  [subtreeCrossSpacing] works on horizontal (dx)
+  /// for [TreeDirection.left] and [TreeDirection.right], [subtreeMainAxisSpacing works on the vertical (dx)
+  ///  [subtreeCrossSpacing] works on horizontal (dy)
+  @override
   void normalize({
     required TreeDirection direction,
     required double subtreeMainAxisSpacing,
     required double subtreeCrossSpacing,
+    double scaleX = 1.0,
+    double scaleY = 1.0,
   }) {
     assert(_debugHasLaidout, "Node not laid out");
 
     if (isLeaf) {
       _normalizedSize = _size;
     } else {
-      double mainAxisSpace =
-          subtreeMainAxisSpacing + getNormalizedMainAxis(direction);
+      // default TreeDirection.top
+      double mainAxisSpace = subtreeMainAxisSpacing + getMainAxis(direction);
       double crossAxisSpace = 0.0;
 
       double maxMainAxisNodeSpace = 0.0;
 
       for (final node in children) {
-        assert(node is Node);
-
-        (node as Node).normalize(
+        node.normalize(
           direction: direction,
           subtreeMainAxisSpacing: subtreeMainAxisSpacing,
           subtreeCrossSpacing: subtreeCrossSpacing,
+          scaleX: scaleX,
+          scaleY: scaleY,
         );
         crossAxisSpace += node.getNormalizedCrossAxis(direction);
         maxMainAxisNodeSpace =
@@ -186,58 +272,114 @@ mixin NodeLayout on BaseNode {
       crossAxisSpace += (children.length - 1) * subtreeCrossSpacing;
       mainAxisSpace += maxMainAxisNodeSpace;
 
-      _normalizedSize = Size(mainAxisSpace, crossAxisSpace);
+      // _normalizedSize = Size(mainAxisSpace, crossAxisSpace);
+      setNormalizedSize(mainAxisSpace, crossAxisSpace, direction);
     }
     _debugHasNormalized = true;
   }
 
-  /// [origin] the top-left of the normalized subtree
+  /// for each normalized node, [origin] always is the top-left corner
+  /// invoke [_align] to calculate its offset relative to this normalized node
+  /// then [_propagateOriginToDescendants] to position all its normalized children
+  @override
   void positionNode(TreeViewDelegate delegate, Offset origin) {
     assert(_debugHasNormalized);
 
     if (isLeaf) {
       _position = origin + Alignment.center.alongSize(_normalizedSize);
     } else {
-      _position = origin + align(delegate.alignment, delegate.direction);
+      _position = origin + _align(delegate.alignment, delegate.direction);
       _propagateOriginToDescendants(origin, delegate);
     }
   }
 
-  void _propagateOriginToDescendants(Offset origin, TreeViewDelegate delegate) {
+  @override
+  void setNormalizedSize(
+      double mainAxis, double crossAxis, TreeDirection direction) {
+    switch (direction) {
+      case TreeDirection.top:
+      case TreeDirection.bottom:
+        _normalizedSize = Size(crossAxis, mainAxis);
+        break;
+      case TreeDirection.left:
+      case TreeDirection.right:
+        _normalizedSize = Size(mainAxis, crossAxis);
+        break;
+    }
+  }
+
+  /// the baseline is mainly used to mark the relative main-axis position between normalized children and this node
+  @override
+  Offset calculateNormalizedBaseline(TreeDirection direction,
+      double mainAxisSpacing, double crossAxisSpacing) {
     double dx = 0.0;
     double dy = 0.0;
 
-    switch (delegate.direction) {
+    switch (direction) {
       case TreeDirection.top:
-        dy = height / 2 + delegate.mainAxisSpacing;
-        break;
-      case TreeDirection.bottom:
-        dy = -(height / 2 + delegate.mainAxisSpacing);
+        dx = 0.0;
+        dy = height + mainAxisSpacing;
         break;
       case TreeDirection.left:
-        dx = width / 2 + delegate.mainAxisSpacing;
+        dx = width + mainAxisSpacing;
+        dy = 0.0;
+        break;
+      case TreeDirection.bottom:
+        dx = 0.0;
+        dy = _normalizedSize.height - mainAxisSpacing - height;
         break;
       case TreeDirection.right:
-        dx = -(width / 2 + delegate.mainAxisSpacing);
+        dx = _normalizedSize.width - mainAxisSpacing - width;
+        dy = 0.0;
         break;
     }
+    return Offset(dx, dy);
+  }
+
+  /// once the baseline is determined, we only need to calculate the cross-axis shift by [TreeViewDelegate.direction]
+  ///
+  void _propagateOriginToDescendants(Offset origin, TreeViewDelegate delegate) {
+    final baseline = calculateNormalizedBaseline(delegate.direction,
+            delegate.mainAxisSpacing, delegate.crossAxisSpacing) +
+        origin;
+
+    double dx = 0.0;
+    double dy = 0.0;
 
     for (final node in children) {
-      (node as Node).positionNode(delegate, origin + Offset(dx, dy));
+      Offset shift = Offset.zero;
+
+      switch (delegate.direction) {
+        case TreeDirection.top:
+        case TreeDirection.left:
+          shift = Offset(dx, dy);
+          break;
+        case TreeDirection.bottom:
+          shift = Offset(dx, -node.getNormalizedMainAxis(delegate.direction));
+          break;
+        case TreeDirection.right:
+          shift = Offset(-node.getNormalizedMainAxis(delegate.direction), dy);
+          break;
+      }
+
+      node.positionNode(delegate, baseline + shift);
+
       switch (delegate.direction) {
         case TreeDirection.top:
         case TreeDirection.bottom:
-          dx += node.getNormalizedCrossAxis(delegate.direction);
+          dx += node.getNormalizedCrossAxis(delegate.direction) +
+              delegate.crossAxisSpacing;
           break;
         case TreeDirection.left:
         case TreeDirection.right:
-          dy += node.getNormalizedCrossAxis(delegate.direction);
+          dy += node.getNormalizedCrossAxis(delegate.direction) +
+              delegate.crossAxisSpacing;
           break;
       }
     }
   }
 
-  Offset align(NodeAlignment alignment, TreeDirection direction) {
+  Offset _align(NodeAlignment alignment, TreeDirection direction) {
     Alignment directionAlignment = Alignment.topLeft;
 
     double dx = 0.0;

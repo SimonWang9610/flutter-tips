@@ -21,15 +21,17 @@ class NodeBoxData<T extends BaseNode>
   T? node;
 }
 
-class TreeView extends MultiChildRenderObjectWidget {
-  final Node root;
+class TreeView<T extends BaseNode> extends MultiChildRenderObjectWidget {
+  final T root;
+  final Clip clipBehavior;
   final TreeViewDelegate delegate;
 
   TreeView({
     Key? key,
     required this.root,
-    required NodeWidgetBuilder nodeBuilder,
+    required NodeWidgetBuilder<T> nodeBuilder,
     required this.delegate,
+    this.clipBehavior = Clip.hardEdge,
   }) : super(
           key: key,
           children: BaseNode.extractChildrenWidget(root, nodeBuilder),
@@ -37,9 +39,10 @@ class TreeView extends MultiChildRenderObjectWidget {
 
   @override
   RenderTreeView createRenderObject(BuildContext context) {
-    return RenderTreeView(
+    return RenderTreeView<T>(
       root: root,
       delegate: delegate,
+      clipBehavior: clipBehavior,
     );
   }
 
@@ -47,32 +50,40 @@ class TreeView extends MultiChildRenderObjectWidget {
   void updateRenderObject(BuildContext context, RenderTreeView renderObject) {
     renderObject
       ..root = root
-      ..delegate = delegate;
+      ..delegate = delegate
+      ..clipBehavior = clipBehavior;
   }
 }
 
-class RenderTreeView extends RenderBox
+class RenderTreeView<T extends BaseNode> extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, NodeBoxData>,
-        RenderBoxContainerDefaultsMixin<RenderBox, NodeBoxData> {
+        RenderBoxContainerDefaultsMixin<RenderBox, NodeBoxData>,
+        DebugOverflowIndicatorMixin {
   static final Paint _defaultEdgePaint = Paint()
     ..style = PaintingStyle.stroke
     ..strokeWidth = 3
     ..color = Colors.black
     ..strokeCap = StrokeCap.butt;
 
-  Node _root;
+  T _root;
   TreeViewDelegate _delegate;
+  Clip _clipBehavior;
+
+  final LayerHandle<ClipRectLayer> _clipRectLayer =
+      LayerHandle<ClipRectLayer>();
 
   /// [addAll] will iterate each widget to [insert] it to the children list
   /// [insert] will invoke [adoptChild] and then actually insert it to the children list
   /// [adoptChild] will first invoke [setupParentData] to initialize [NodeBoxData]
   RenderTreeView({
-    required Node root,
+    required T root,
     required TreeViewDelegate delegate,
+    Clip clipBehavior = Clip.hardEdge,
     List<RenderBox>? children,
   })  : _root = root,
-        _delegate = delegate {
+        _delegate = delegate,
+        _clipBehavior = clipBehavior {
     addAll(children);
   }
 
@@ -80,10 +91,14 @@ class RenderTreeView extends RenderBox
     markNeedsLayout();
   }
 
-  Node get root => _root;
-  set root(Node value) {
-    _root = value;
-    markNeedsLayout();
+  T get root => _root;
+
+  /// TODO: optimize checking if two trees are identical
+  set root(T value) {
+    if (!_root.isSameTree(value)) {
+      _root = value;
+      markNeedsLayout();
+    }
   }
 
   TreeViewDelegate get delegate => _delegate;
@@ -104,18 +119,85 @@ class RenderTreeView extends RenderBox
     }
   }
 
+  bool _hasOverflow = false;
+
+  Clip get clipBehavior => _clipBehavior;
+  set clipBehavior(Clip value) {
+    if (_clipBehavior != value) {
+      _clipBehavior = value;
+      markNeedsPaint();
+      markNeedsSemanticsUpdate();
+    }
+  }
+
+  /// call [BoxConstraints.constrain] to ensure [size] can pass [debugAssertDoesMeetConstraints]
   @override
   void performLayout() {
-    if (root.isLeaf) {
-      size = constraints.biggest;
+    final actualSize = _delegate.layout(constraints.loosen(), firstChild);
+
+    size = constraints.constrain(actualSize);
+
+    if (size.width < actualSize.width || size.height < actualSize.height) {
+      _hasOverflow = true;
+    }
+  }
+
+  /// TODO: paint edges between nodes
+  /// TODO: paint the overflow rect more exactly
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    // context.canvas.save();
+    // context.canvas.translate(offset.dx, offset.dy);
+
+    if (!_hasOverflow) {
+      defaultPaint(context, offset);
       return;
     }
 
-    size = _delegate.layout(constraints.loosen(), firstChild);
-  }
+    if (size.isEmpty) {
+      return;
+    }
 
-  @override
-  void paint(PaintingContext context, Offset offset) {}
+    _clipRectLayer.layer = context.pushClipRect(
+      needsCompositing,
+      offset,
+      Offset.zero & size,
+      defaultPaint,
+      clipBehavior: clipBehavior,
+      oldLayer: _clipRectLayer.layer,
+    );
+
+    assert(() {
+      // Only set this if it's null to save work. It gets reset to null if the
+      // _direction changes.
+      final List<DiagnosticsNode> debugOverflowHints = <DiagnosticsNode>[
+        ErrorDescription(
+          'The edge of the $runtimeType that is overflowing has been marked '
+          'in the rendering with a yellow and black striped pattern. This is '
+          'usually caused by the contents being too big for the $runtimeType. '
+          'The required size is ${root.normalizedSize}, but the maximum size cannot be greater than: ${constraints.biggest}.',
+        ),
+        ErrorHint(
+          'This is considered an error condition because it indicates that there '
+          'is content that cannot be seen. If the content is legitimately bigger '
+          'than the available space, consider clipping it with a ClipRect widget '
+          'before putting it in the flex, or using a scrollable container rather '
+          'than a Flex, like a ListView.',
+        ),
+      ];
+
+      // Simulate a child rect that overflows by the right amount. This child
+      // rect is never used for drawing, just for determining the overflow
+      // location and amount.
+
+      final overflowChildRect = Rect.fromLTWH(
+          0.0, 0.0, root.normalizedSize.width, root.normalizedSize.height);
+      paintOverflowIndicator(
+          context, offset, Offset.zero & size, overflowChildRect,
+          overflowHints: debugOverflowHints);
+      return true;
+    }());
+  }
 
   @override
   void setupParentData(RenderBox child) {
@@ -137,6 +219,12 @@ class RenderTreeView extends RenderBox
   }
 
   @override
+  void dispose() {
+    _clipRectLayer.layer = null;
+    super.dispose();
+  }
+
+  @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
     return defaultHitTestChildren(result, position: position);
   }
@@ -144,14 +232,14 @@ class RenderTreeView extends RenderBox
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(DiagnosticsProperty<Node>('root', root));
+    properties.add(DiagnosticsProperty<BaseNode>('root', root));
     properties.add(DiagnosticsProperty<TreeViewDelegate>('delegate', delegate));
   }
 }
 
 typedef TreeViewLayoutBuilder = Size Function(
     BoxConstraints, TreeDirection direction, RenderBox?);
-typedef TreeViewEdgeBuilder = void Function(Node);
+typedef TreeViewEdgeBuilder<T extends BaseNode> = void Function(T);
 
 class TreeViewDelegate extends ChangeNotifier {
   final TreeViewLayoutBuilder? layoutDelegate;
@@ -166,7 +254,7 @@ class TreeViewDelegate extends ChangeNotifier {
     this.edgePainter,
     this.layoutDelegate,
     double crossAxisSpacing = 20.0,
-    double mainAxisSpacing = 50.0,
+    double mainAxisSpacing = 25.0,
     TreeDirection direction = TreeDirection.top,
     NodeAlignment alignment = NodeAlignment.mid,
   })  : _mainAxisSpacing = mainAxisSpacing,
@@ -222,7 +310,7 @@ class TreeViewDelegate extends ChangeNotifier {
 
     assert(parentData.node != null, "Not applyParentData: NodeBoxData");
 
-    final rootNode = parentData.node!.rootNode as Node;
+    final rootNode = parentData.node!.rootNode;
 
     RenderBox? firstChild = child;
 
@@ -242,6 +330,9 @@ class TreeViewDelegate extends ChangeNotifier {
       subtreeMainAxisSpacing: delegate.mainAxisSpacing,
       subtreeCrossSpacing: delegate.crossAxisSpacing,
     );
+
+    // if (constraints.maxWidth > rootNode.normalizedSize.width ||
+    //     constraints.maxHeight > rootNode.normalizedSize.height) {}
 
     rootNode.positionNode(
       delegate,

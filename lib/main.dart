@@ -5,6 +5,7 @@ import 'package:flutter_tips/carousel/example.dart';
 import 'package:flutter_tips/exercises/example.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/gallery/example.dart';
+import 'package:flutter_tips/graph/example.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
@@ -78,7 +79,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: const ScaledScrollView(),
+        child: const TreeViewExample(),
       ),
       // body: Center(
       //   child: SizedBox.square(
