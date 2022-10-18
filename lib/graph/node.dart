@@ -122,6 +122,22 @@ abstract class BaseNode {
 
   List<BaseNode> get children => List.unmodifiable(_children);
 
+  double getLeftMostPosition(double leftmost) {
+    if (_position.dx < leftmost) {
+      leftmost = _position.dx;
+    }
+
+    return children.first.getLeftMostPosition(leftmost);
+  }
+
+  double getRightMostPosition(double rightmost) {
+    if (_position.dx > rightmost) {
+      rightmost = _position.dx;
+    }
+
+    return children.last.getRightMostPosition(rightmost);
+  }
+
   void normalize({
     required TreeDirection direction,
     required double subtreeMainAxisSpacing,
@@ -130,7 +146,7 @@ abstract class BaseNode {
     double scaleY = 1.0,
   });
 
-  void positionNode(TreeViewDelegate delegate, Offset origin);
+  void positionNode(TreeViewLayoutDelegate delegate, Offset origin);
 
   double getNormalizedMainAxis(TreeDirection direction);
   double getNormalizedCrossAxis(TreeDirection direction);
@@ -295,7 +311,7 @@ mixin NodeLayout on BaseNode {
   /// invoke [_align] to calculate its offset relative to this normalized node
   /// then [_propagateOriginToDescendants] to position all its normalized children
   @override
-  void positionNode(TreeViewDelegate delegate, Offset origin) {
+  void positionNode(TreeViewLayoutDelegate delegate, Offset origin) {
     assert(_debugHasNormalized);
 
     if (isLeaf) {
@@ -351,7 +367,8 @@ mixin NodeLayout on BaseNode {
 
   /// once the baseline is determined, we only need to calculate the cross-axis shift by [TreeViewDelegate.direction]
   ///
-  void _propagateOriginToDescendants(Offset origin, TreeViewDelegate delegate) {
+  void _propagateOriginToDescendants(
+      Offset origin, TreeViewLayoutDelegate delegate) {
     final baseline = calculateNormalizedBaseline(delegate.direction,
             delegate.mainAxisSpacing, delegate.crossAxisSpacing) +
         origin;

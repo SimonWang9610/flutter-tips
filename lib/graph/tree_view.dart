@@ -24,13 +24,15 @@ class NodeBoxData<T extends BaseNode>
 class TreeView<T extends BaseNode> extends MultiChildRenderObjectWidget {
   final T root;
   final Clip clipBehavior;
-  final TreeViewDelegate delegate;
+  final TreeViewLayoutDelegate layoutDelegate;
+  final TreeViewEdgePainter edgePainter;
 
   TreeView({
     Key? key,
     required this.root,
     required NodeWidgetBuilder<T> nodeBuilder,
-    required this.delegate,
+    required this.layoutDelegate,
+    required this.edgePainter,
     this.clipBehavior = Clip.hardEdge,
   }) : super(
           key: key,
@@ -41,7 +43,8 @@ class TreeView<T extends BaseNode> extends MultiChildRenderObjectWidget {
   RenderTreeView createRenderObject(BuildContext context) {
     return RenderTreeView<T>(
       root: root,
-      delegate: delegate,
+      layoutDelegate: layoutDelegate,
+      edgePainter: edgePainter,
       clipBehavior: clipBehavior,
     );
   }
@@ -50,7 +53,8 @@ class TreeView<T extends BaseNode> extends MultiChildRenderObjectWidget {
   void updateRenderObject(BuildContext context, RenderTreeView renderObject) {
     renderObject
       ..root = root
-      ..delegate = delegate
+      ..layoutDelegate = layoutDelegate
+      ..edgePainter = edgePainter
       ..clipBehavior = clipBehavior;
   }
 }
@@ -61,7 +65,8 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
         RenderBoxContainerDefaultsMixin<RenderBox, NodeBoxData>,
         DebugOverflowIndicatorMixin {
   T _root;
-  TreeViewDelegate _delegate;
+  TreeViewLayoutDelegate _layoutDelegate;
+  TreeViewEdgePainter _edgePainter;
   Clip _clipBehavior;
 
   final LayerHandle<ClipRectLayer> _clipRectLayer =
@@ -72,17 +77,15 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
   /// [adoptChild] will first invoke [setupParentData] to initialize [NodeBoxData]
   RenderTreeView({
     required T root,
-    required TreeViewDelegate delegate,
+    required TreeViewLayoutDelegate layoutDelegate,
+    required TreeViewEdgePainter edgePainter,
     Clip clipBehavior = Clip.hardEdge,
     List<RenderBox>? children,
   })  : _root = root,
-        _delegate = delegate,
-        _clipBehavior = clipBehavior {
+        _layoutDelegate = layoutDelegate,
+        _clipBehavior = clipBehavior,
+        _edgePainter = edgePainter {
     addAll(children);
-  }
-
-  void _handleDelegateChanges() {
-    markNeedsLayout();
   }
 
   T get root => _root;
@@ -95,25 +98,46 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
     }
   }
 
-  TreeViewDelegate get delegate => _delegate;
-  set delegate(TreeViewDelegate value) {
-    if (_delegate == value) {
+  TreeViewLayoutDelegate get layoutDelegate => _layoutDelegate;
+  set layoutDelegate(TreeViewLayoutDelegate value) {
+    if (_layoutDelegate == value) {
       return;
     }
 
-    final TreeViewDelegate oldDelegate = _delegate;
-    if (oldDelegate.runtimeType != value.runtimeType) {
+    final TreeViewLayoutDelegate oldDelegate = _layoutDelegate;
+    if (oldDelegate.runtimeType != value.runtimeType ||
+        value.shouldRelayout(oldDelegate)) {
       markNeedsLayout();
     }
-    _delegate = value;
+    _layoutDelegate = value;
 
     if (attached) {
-      oldDelegate.removeListener(_handleDelegateChanges);
-      _delegate.addListener(_handleDelegateChanges);
+      // oldDelegate.removeListener(markNeedsLayout);
+      oldDelegate.dispose();
+      _layoutDelegate.addListener(markNeedsLayout);
     }
   }
 
-  bool _hasOverflow = false;
+  TreeViewEdgePainter get edgePainter => _edgePainter;
+  set edgePainter(TreeViewEdgePainter value) {
+    if (_edgePainter == value) {
+      return;
+    }
+
+    final TreeViewEdgePainter oldPainter = _edgePainter;
+
+    if (oldPainter.runtimeType != value.runtimeType ||
+        value.shouldRepaint(oldPainter)) {
+      markNeedsPaint();
+    }
+    _edgePainter = value;
+
+    if (attached) {
+      // oldPainter.removeListener(markNeedsPaint);
+      oldPainter.dispose();
+      _edgePainter.addListener(markNeedsPaint);
+    }
+  }
 
   Clip get clipBehavior => _clipBehavior;
   set clipBehavior(Clip value) {
@@ -127,7 +151,7 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
   /// call [BoxConstraints.constrain] to ensure [size] can pass [debugAssertDoesMeetConstraints]
   @override
   void performLayout() {
-    final actualSize = _delegate.layout(constraints.loosen(), firstChild);
+    final actualSize = _layoutDelegate.layout(constraints.loosen(), firstChild);
 
     size = constraints.constrain(actualSize);
 
@@ -136,11 +160,13 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
     }
   }
 
+  bool _hasOverflow = false;
+
   /// TODO: paint edges between nodes
   /// TODO: paint the overflow rect more exactly
   @override
   void paint(PaintingContext context, Offset offset) {
-    _delegate.paintEdges(root, context.canvas, offset);
+    _edgePainter.paintEdges(root, context.canvas, offset);
 
     if (!_hasOverflow) {
       defaultPaint(context, offset);
@@ -173,9 +199,7 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
         ErrorHint(
           'This is considered an error condition because it indicates that there '
           'is content that cannot be seen. If the content is legitimately bigger '
-          'than the available space, consider clipping it with a ClipRect widget '
-          'before putting it in the flex, or using a scrollable container rather '
-          'than a Flex, like a ListView.',
+          'than the available space, consider clipping it with a ClipRect widget.',
         ),
       ];
 
@@ -202,18 +226,22 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    _delegate.addListener(_handleDelegateChanges);
+    _layoutDelegate.addListener(markNeedsLayout);
+    _edgePainter.addListener(markNeedsPaint);
   }
 
   @override
   void detach() {
-    _delegate.removeListener(_handleDelegateChanges);
+    _layoutDelegate.removeListener(markNeedsLayout);
+    _edgePainter.removeListener(markNeedsPaint);
     super.detach();
   }
 
   @override
   void dispose() {
     _clipRectLayer.layer = null;
+    _layoutDelegate.dispose();
+    _edgePainter.dispose();
     super.dispose();
   }
 
@@ -226,34 +254,26 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(DiagnosticsProperty<BaseNode>('root', root));
-    properties.add(DiagnosticsProperty<TreeViewDelegate>('delegate', delegate));
+    properties.add(DiagnosticsProperty<TreeViewLayoutDelegate>(
+        'layoutDelegate', layoutDelegate));
+    properties.add(
+        DiagnosticsProperty<TreeViewEdgePainter>('edgePainter', edgePainter));
   }
 }
 
 typedef TreeViewLayoutBuilder = Size Function(
     BoxConstraints, TreeDirection direction, RenderBox?);
-typedef TreeViewEdgeBuilder<T extends BaseNode> = void Function(
-    T, Canvas, Offset);
 
-class TreeViewDelegate extends ChangeNotifier {
-  static final Paint _defaultEdgePaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 3
-    ..color = Colors.black
-    ..strokeCap = StrokeCap.butt;
-
-  final TreeViewLayoutBuilder? layoutDelegate;
-  final TreeViewEdgeBuilder? edgePainter;
+class TreeViewLayoutDelegate extends ChangeNotifier {
+  final TreeViewLayoutBuilder? layoutBuilder;
 
   double _mainAxisSpacing;
   double _crossAxisSpacing;
   TreeDirection _direction;
   NodeAlignment _alignment;
-  Paint? _edgePaint;
 
-  TreeViewDelegate({
-    this.edgePainter,
-    this.layoutDelegate,
+  TreeViewLayoutDelegate({
+    this.layoutBuilder,
     double crossAxisSpacing = 20.0,
     double mainAxisSpacing = 25.0,
     TreeDirection direction = TreeDirection.top,
@@ -262,8 +282,7 @@ class TreeViewDelegate extends ChangeNotifier {
   })  : _mainAxisSpacing = mainAxisSpacing,
         _crossAxisSpacing = crossAxisSpacing,
         _direction = direction,
-        _alignment = alignment,
-        _edgePaint = edgePaint;
+        _alignment = alignment;
 
   double get mainAxisSpacing => _mainAxisSpacing;
   set mainAxisSpacing(double value) {
@@ -283,6 +302,7 @@ class TreeViewDelegate extends ChangeNotifier {
 
   TreeDirection get direction => _direction;
   set direction(TreeDirection direction) {
+    print("set direction: $direction");
     if (_direction != direction) {
       _direction = direction;
       notifyListeners();
@@ -297,32 +317,19 @@ class TreeViewDelegate extends ChangeNotifier {
     }
   }
 
-  Paint? get edgePaint => _edgePaint;
-  set edgePaint(Paint? value) {
-    if (_edgePaint != value) {
-      _edgePaint = value;
-      notifyListeners();
-    }
-  }
+  @protected
+  bool shouldRelayout(covariant TreeViewLayoutDelegate oldDelegate) => true;
 
   Size layout(BoxConstraints constraints, RenderBox? child) {
-    if (layoutDelegate != null) {
-      return layoutDelegate!(constraints, direction, child);
+    if (layoutBuilder != null) {
+      return layoutBuilder!(constraints, direction, child);
     } else {
       return _defaultLayoutDelegate(constraints, this, child);
     }
   }
 
-  void paintEdges<T extends BaseNode>(T root, Canvas canvas, Offset offset) {
-    if (edgePainter != null) {
-      edgePainter!(root, canvas, offset);
-    } else {
-      _defaultEdgePainter(root, canvas, offset);
-    }
-  }
-
-  static Size _defaultLayoutDelegate(
-      BoxConstraints constraints, TreeViewDelegate delegate, RenderBox? child) {
+  static Size _defaultLayoutDelegate(BoxConstraints constraints,
+      TreeViewLayoutDelegate delegate, RenderBox? child) {
     assert(child != null);
 
     final parentData = child!.parentData as NodeBoxData;
@@ -350,9 +357,6 @@ class TreeViewDelegate extends ChangeNotifier {
       subtreeCrossSpacing: delegate.crossAxisSpacing,
     );
 
-    // if (constraints.maxWidth > rootNode.normalizedSize.width ||
-    //     constraints.maxHeight > rootNode.normalizedSize.height) {}
-
     rootNode.positionNode(
       delegate,
       Offset.zero,
@@ -369,6 +373,17 @@ class TreeViewDelegate extends ChangeNotifier {
 
     return rootNode.normalizedSize;
   }
+}
+
+typedef TreeViewEdgeBuilder<T extends BaseNode> = void Function(
+    T, Canvas, Offset);
+
+class TreeViewEdgePainter extends ChangeNotifier {
+  static final Paint _defaultEdgePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3
+    ..color = Colors.black
+    ..strokeCap = StrokeCap.butt;
 
   static void _defaultEdgePainter(BaseNode root, Canvas canvas, Offset offset,
       {Paint? edgePaint}) {
@@ -382,5 +397,37 @@ class TreeViewDelegate extends ChangeNotifier {
     }
 
     canvas.restore();
+  }
+
+  final TreeViewEdgeBuilder? edgePainter;
+  Paint? _paint;
+
+  TreeViewEdgePainter({
+    Paint? paint,
+    this.edgePainter,
+  }) : _paint = paint;
+
+  Paint? get paint => _paint;
+  set paint(Paint? value) {
+    if (_paint != value) {
+      _paint = value;
+      notifyListeners();
+    }
+  }
+
+  @protected
+  bool shouldRepaint(covariant TreeViewEdgePainter oldPainter) => true;
+
+  void paintEdges<T extends BaseNode>(T root, Canvas canvas, Offset offset) {
+    if (edgePainter != null) {
+      edgePainter!(root, canvas, offset);
+    } else {
+      _defaultEdgePainter(
+        root,
+        canvas,
+        offset,
+        edgePaint: paint ?? _defaultEdgePaint,
+      );
+    }
   }
 }
