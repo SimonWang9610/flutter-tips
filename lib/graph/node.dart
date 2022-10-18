@@ -34,6 +34,20 @@ abstract class BaseNode {
     return widgets;
   }
 
+  static List<Path> extractEdges<T extends BaseNode>(T root) {
+    final List<Path> edges = [];
+
+    for (final node in root.children.cast<T>()) {
+      final path = Path()
+        ..moveTo(root.centerX, root.centerY)
+        ..lineTo(node.centerX, node.centerY);
+
+      edges.add(path);
+      edges.addAll(extractEdges(node));
+    }
+    return edges;
+  }
+
   /// unique identity for a node
   final String id;
 
@@ -64,6 +78,8 @@ abstract class BaseNode {
   /// the center position of the node widget
   Offset _position = Offset.zero;
   Offset get offset => _position - Alignment.center.alongSize(_size);
+  double get centerX => _position.dx;
+  double get centerY => _position.dy;
 
   BaseNode({required this.id});
 
@@ -119,6 +135,7 @@ abstract class BaseNode {
   double getNormalizedMainAxis(TreeDirection direction);
   double getNormalizedCrossAxis(TreeDirection direction);
   double getMainAxis(TreeDirection direction);
+  double getCrossAxis(TreeDirection direction);
 
   void setNormalizedSize(
       double mainAxis, double crossAxis, TreeDirection direction);
@@ -202,27 +219,17 @@ mixin NodeLayout on BaseNode {
     }
   }
 
-  double getMainAxisScale(
-      double scaleX, double scaleY, TreeDirection direction) {
-    switch (direction) {
-      case TreeDirection.top:
-      case TreeDirection.bottom:
-        return scaleY;
-      case TreeDirection.left:
-      case TreeDirection.right:
-        return scaleX;
-    }
-  }
+  @override
+  double getCrossAxis(TreeDirection direction) {
+    assert(_debugHasLaidout);
 
-  double getCrossAxisScale(
-      double scaleX, double scaleY, TreeDirection direction) {
     switch (direction) {
       case TreeDirection.top:
       case TreeDirection.bottom:
-        return scaleX;
+        return width;
       case TreeDirection.left:
       case TreeDirection.right:
-        return scaleY;
+        return height;
     }
   }
 
@@ -237,6 +244,10 @@ mixin NodeLayout on BaseNode {
   ///  [subtreeCrossSpacing] works on horizontal (dx)
   /// for [TreeDirection.left] and [TreeDirection.right], [subtreeMainAxisSpacing works on the vertical (dx)
   ///  [subtreeCrossSpacing] works on horizontal (dy)
+  ///
+  /// NOTE:
+  ///  the normalized main axis would be: main axis of the root + mainAxisSpacing + maxChildNodeMainAxis
+  ///  the normalized cross acis would be the maximum between root.crossAxis and crossAxisSpace of all children
   @override
   void normalize({
     required TreeDirection direction,
@@ -270,6 +281,8 @@ mixin NodeLayout on BaseNode {
       }
 
       crossAxisSpace += (children.length - 1) * subtreeCrossSpacing;
+
+      crossAxisSpace = max(crossAxisSpace, getCrossAxis(direction));
       mainAxisSpace += maxMainAxisNodeSpace;
 
       // _normalizedSize = Size(mainAxisSpace, crossAxisSpace);
@@ -345,6 +358,37 @@ mixin NodeLayout on BaseNode {
 
     double dx = 0.0;
     double dy = 0.0;
+
+    // if the root.crossAxis is greater than the normalized cross axis
+    // we need to shift the cross axis to ensure that
+    // the gap is split evenly into:
+    //  1) the left/top side of the first child
+    //  2) the right/bottom side od the last child
+    final needCrossShift = getCrossAxis(delegate.direction) ==
+        getNormalizedCrossAxis(delegate.direction);
+
+    if (needCrossShift) {
+      double crossAxisSpace = 0.0;
+      for (final node in children) {
+        crossAxisSpace += node.getNormalizedCrossAxis(delegate.direction);
+      }
+
+      crossAxisSpace += (children.length - 1) * delegate.crossAxisSpacing;
+
+      final gap = getNormalizedCrossAxis(delegate.direction) - crossAxisSpace;
+      assert(gap >= 0);
+
+      switch (delegate.direction) {
+        case TreeDirection.top:
+        case TreeDirection.bottom:
+          dx += gap / 2;
+          break;
+        case TreeDirection.left:
+        case TreeDirection.right:
+          dy += gap / 2;
+          break;
+      }
+    }
 
     for (final node in children) {
       Offset shift = Offset.zero;

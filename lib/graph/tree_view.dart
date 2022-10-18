@@ -60,12 +60,6 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
         ContainerRenderObjectMixin<RenderBox, NodeBoxData>,
         RenderBoxContainerDefaultsMixin<RenderBox, NodeBoxData>,
         DebugOverflowIndicatorMixin {
-  static final Paint _defaultEdgePaint = Paint()
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 3
-    ..color = Colors.black
-    ..strokeCap = StrokeCap.butt;
-
   T _root;
   TreeViewDelegate _delegate;
   Clip _clipBehavior;
@@ -146,8 +140,7 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
   /// TODO: paint the overflow rect more exactly
   @override
   void paint(PaintingContext context, Offset offset) {
-    // context.canvas.save();
-    // context.canvas.translate(offset.dx, offset.dy);
+    _delegate.paintEdges(root, context.canvas, offset);
 
     if (!_hasOverflow) {
       defaultPaint(context, offset);
@@ -239,9 +232,16 @@ class RenderTreeView<T extends BaseNode> extends RenderBox
 
 typedef TreeViewLayoutBuilder = Size Function(
     BoxConstraints, TreeDirection direction, RenderBox?);
-typedef TreeViewEdgeBuilder<T extends BaseNode> = void Function(T);
+typedef TreeViewEdgeBuilder<T extends BaseNode> = void Function(
+    T, Canvas, Offset);
 
 class TreeViewDelegate extends ChangeNotifier {
+  static final Paint _defaultEdgePaint = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3
+    ..color = Colors.black
+    ..strokeCap = StrokeCap.butt;
+
   final TreeViewLayoutBuilder? layoutDelegate;
   final TreeViewEdgeBuilder? edgePainter;
 
@@ -249,6 +249,7 @@ class TreeViewDelegate extends ChangeNotifier {
   double _crossAxisSpacing;
   TreeDirection _direction;
   NodeAlignment _alignment;
+  Paint? _edgePaint;
 
   TreeViewDelegate({
     this.edgePainter,
@@ -257,10 +258,12 @@ class TreeViewDelegate extends ChangeNotifier {
     double mainAxisSpacing = 25.0,
     TreeDirection direction = TreeDirection.top,
     NodeAlignment alignment = NodeAlignment.mid,
+    Paint? edgePaint,
   })  : _mainAxisSpacing = mainAxisSpacing,
         _crossAxisSpacing = crossAxisSpacing,
         _direction = direction,
-        _alignment = alignment;
+        _alignment = alignment,
+        _edgePaint = edgePaint;
 
   double get mainAxisSpacing => _mainAxisSpacing;
   set mainAxisSpacing(double value) {
@@ -294,11 +297,27 @@ class TreeViewDelegate extends ChangeNotifier {
     }
   }
 
+  Paint? get edgePaint => _edgePaint;
+  set edgePaint(Paint? value) {
+    if (_edgePaint != value) {
+      _edgePaint = value;
+      notifyListeners();
+    }
+  }
+
   Size layout(BoxConstraints constraints, RenderBox? child) {
     if (layoutDelegate != null) {
       return layoutDelegate!(constraints, direction, child);
     } else {
       return _defaultLayoutDelegate(constraints, this, child);
+    }
+  }
+
+  void paintEdges<T extends BaseNode>(T root, Canvas canvas, Offset offset) {
+    if (edgePainter != null) {
+      edgePainter!(root, canvas, offset);
+    } else {
+      _defaultEdgePainter(root, canvas, offset);
     }
   }
 
@@ -349,5 +368,19 @@ class TreeViewDelegate extends ChangeNotifier {
     }
 
     return rootNode.normalizedSize;
+  }
+
+  static void _defaultEdgePainter(BaseNode root, Canvas canvas, Offset offset,
+      {Paint? edgePaint}) {
+    canvas.save();
+    canvas.translate(offset.dx, offset.dy);
+
+    final edges = BaseNode.extractEdges(root);
+
+    for (final edge in edges) {
+      canvas.drawPath(edge, edgePaint ?? _defaultEdgePaint);
+    }
+
+    canvas.restore();
   }
 }

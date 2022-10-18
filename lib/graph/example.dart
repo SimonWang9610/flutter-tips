@@ -210,7 +210,7 @@ class _TreeViewExampleState extends State<TreeViewExample> {
               );
             },
             delegate: TreeViewDelegate(
-              direction: TreeDirection.top,
+              direction: TreeDirection.right,
               alignment: NodeAlignment.mid,
               mainAxisSpacing: 20,
               crossAxisSpacing: 10,
