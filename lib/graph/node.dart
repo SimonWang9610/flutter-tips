@@ -1,8 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/graph/node_widget.dart';
-import 'package:flutter_tips/graph/tree_view.dart';
+
+import 'node_widget.dart';
+import 'tree_layout_delegate.dart';
 
 typedef NodeWidgetBuilder<T extends BaseNode> = Widget Function(T);
 
@@ -121,22 +122,6 @@ abstract class BaseNode {
   bool get isLeaf => _children.isEmpty;
 
   List<BaseNode> get children => List.unmodifiable(_children);
-
-  double getLeftMostPosition(double leftmost) {
-    if (_position.dx < leftmost) {
-      leftmost = _position.dx;
-    }
-
-    return children.first.getLeftMostPosition(leftmost);
-  }
-
-  double getRightMostPosition(double rightmost) {
-    if (_position.dx > rightmost) {
-      rightmost = _position.dx;
-    }
-
-    return children.last.getRightMostPosition(rightmost);
-  }
 
   void normalize({
     required TreeDirection direction,

@@ -5,7 +5,8 @@ import 'package:flutter_tips/carousel/example.dart';
 import 'package:flutter_tips/exercises/example.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/gallery/example.dart';
-import 'package:flutter_tips/graph/example.dart';
+import 'package:flutter_tips/graph/clip_example.dart';
+import 'package:flutter_tips/graph/transform_exmaple.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
@@ -79,7 +80,34 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: Center(
-        child: const TreeViewExample(),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ClipTreeViewExample(),
+                  ),
+                );
+              },
+              child: const Text("Clip tree view"),
+            ),
+            const SizedBox(
+              height: 40,
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const TransformTreeViewExample(),
+                  ),
+                );
+              },
+              child: const Text("transform tree view"),
+            )
+          ],
+        ),
       ),
       // body: Center(
       //   child: SizedBox.square(
