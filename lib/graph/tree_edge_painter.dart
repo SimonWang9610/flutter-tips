@@ -5,6 +5,7 @@ import 'node.dart';
 typedef TreeViewEdgeBuilder<T extends BaseNode> = void Function(
     T, Canvas, Offset);
 
+/// using [edgePainter] an d[paint] to customize how to paint edges for a tree view
 abstract class TreeViewEdgePainter extends ChangeNotifier {
   static final Paint _defaultEdgePaint = Paint()
     ..style = PaintingStyle.stroke
@@ -26,13 +27,14 @@ abstract class TreeViewEdgePainter extends ChangeNotifier {
     canvas.restore();
   }
 
-  final TreeViewEdgeBuilder? edgePainter;
   Paint? _paint;
+  TreeViewEdgeBuilder? _edgePainter;
 
   TreeViewEdgePainter({
     Paint? paint,
-    this.edgePainter,
-  }) : _paint = paint;
+    TreeViewEdgeBuilder? edgePainter,
+  })  : _paint = paint,
+        _edgePainter = edgePainter;
 
   Paint? get paint => _paint;
   set paint(Paint? value) {
@@ -42,12 +44,20 @@ abstract class TreeViewEdgePainter extends ChangeNotifier {
     }
   }
 
+  TreeViewEdgeBuilder? get edgePainter => _edgePainter;
+  set edgePainter(TreeViewEdgeBuilder? value) {
+    if (_edgePainter != value) {
+      _edgePainter = value;
+      notifyListeners();
+    }
+  }
+
   @protected
   bool shouldRepaint(covariant TreeViewEdgePainter oldPainter) => true;
 
   void paintEdges<T extends BaseNode>(T root, Canvas canvas, Offset offset) {
-    if (edgePainter != null) {
-      edgePainter!(root, canvas, offset);
+    if (_edgePainter != null) {
+      _edgePainter!(root, canvas, offset);
     } else {
       _defaultEdgePainter(
         root,
@@ -59,6 +69,7 @@ abstract class TreeViewEdgePainter extends ChangeNotifier {
   }
 }
 
+/// used for [TreeView.clip]
 class ClipEdgePainter extends TreeViewEdgePainter {
   ClipEdgePainter({
     super.paint,
@@ -77,6 +88,7 @@ class ClipEdgePainter extends TreeViewEdgePainter {
   }
 }
 
+/// used for [TreeView.transform]
 class TransformEdgePainter extends TreeViewEdgePainter {
   TransformEdgePainter({
     super.paint,

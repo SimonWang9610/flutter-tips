@@ -24,6 +24,11 @@ class NodeBoxData<T extends BaseNode>
   T? node;
 }
 
+/// [TreeDirection] would be the direction of the root node and also indicate the main-axis
+/// [mainAxisSpacing] : the spacing between the root bottom-center and the child's top-center on the main axis
+/// (all children would share the same [mainAxisSpacing])
+/// [crossAxisSpacing] : the spacing between two adjacent siblings on the cross axis
+/// [NodeAlignment] : the position of the root of the normalized subtree relative to the subtree's normalized size
 class TreeViewLayoutDelegate extends ChangeNotifier {
   double _mainAxisSpacing;
   double _crossAxisSpacing;
@@ -37,7 +42,6 @@ class TreeViewLayoutDelegate extends ChangeNotifier {
     double mainAxisSpacing = 25.0,
     TreeDirection direction = TreeDirection.top,
     NodeAlignment alignment = NodeAlignment.mid,
-    Paint? edgePaint,
   })  : _mainAxisSpacing = mainAxisSpacing,
         _crossAxisSpacing = crossAxisSpacing,
         _direction = direction,

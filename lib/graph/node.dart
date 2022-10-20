@@ -257,7 +257,8 @@ mixin NodeLayout on BaseNode {
     double scaleX = 1.0,
     double scaleY = 1.0,
   }) {
-    assert(_debugHasLaidout, "Node not laid out");
+    assert(_debugHasLaidout,
+        "Node not laid out. Please ensure all children have been laid out by invoking [child.layout] when calling performLayout()");
 
     if (isLeaf) {
       _normalizedSize = _size;
@@ -297,7 +298,8 @@ mixin NodeLayout on BaseNode {
   /// then [_propagateOriginToDescendants] to position all its normalized children
   @override
   void positionNode(TreeViewLayoutDelegate delegate, Offset origin) {
-    assert(_debugHasNormalized);
+    assert(_debugHasNormalized,
+        "Please ensure all nodes have been normalized by invoking Node.normalized(...) from the root node");
 
     if (isLeaf) {
       _position = origin + Alignment.center.alongSize(_normalizedSize);
@@ -363,11 +365,15 @@ mixin NodeLayout on BaseNode {
 
     // if the root.crossAxis is greater than the normalized cross axis
     // we need to shift the cross axis to ensure that
-    // the gap is split evenly into:
+    // the gap is conformant to NodeAlignment:
+    // if [NodeAlignment.mid], evenly split:
     //  1) the left/top side of the first child
     //  2) the right/bottom side od the last child
+    // if [NodeALignment.end]:
+    //  1) the left/top side of the first child
     final needCrossShift = getCrossAxis(delegate.direction) ==
-        getNormalizedCrossAxis(delegate.direction);
+            getNormalizedCrossAxis(delegate.direction) &&
+        delegate.alignment != NodeAlignment.start;
 
     if (needCrossShift) {
       double crossAxisSpace = 0.0;
@@ -380,15 +386,22 @@ mixin NodeLayout on BaseNode {
       final gap = getNormalizedCrossAxis(delegate.direction) - crossAxisSpace;
       assert(gap >= 0);
 
-      switch (delegate.direction) {
-        case TreeDirection.top:
-        case TreeDirection.bottom:
+      if (delegate.direction == TreeDirection.top ||
+          delegate.direction == TreeDirection.bottom) {
+        if (delegate.alignment == NodeAlignment.mid) {
           dx += gap / 2;
-          break;
-        case TreeDirection.left:
-        case TreeDirection.right:
+        } else if (delegate.alignment == NodeAlignment.end) {
+          dx += gap;
+        }
+      }
+
+      if (delegate.direction == TreeDirection.left ||
+          delegate.direction == TreeDirection.right) {
+        if (delegate.alignment == NodeAlignment.mid) {
           dy += gap / 2;
-          break;
+        } else if (delegate.alignment == NodeAlignment.end) {
+          dy += gap;
+        }
       }
     }
 

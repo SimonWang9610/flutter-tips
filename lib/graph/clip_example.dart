@@ -32,7 +32,7 @@ class _ClipTreeViewExampleState extends State<ClipTreeViewExample> {
 
   final delegate = TreeViewLayoutDelegate(
     direction: TreeDirection.top,
-    alignment: NodeAlignment.end,
+    alignment: NodeAlignment.start,
     mainAxisSpacing: 20,
     crossAxisSpacing: 10,
   );
@@ -139,6 +139,26 @@ class _ClipTreeViewExampleState extends State<ClipTreeViewExample> {
                 },
                 child: const Text("random edge paint"),
               ),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                  onPressed: () {
+                    delegate.alignment = NodeAlignment.start;
+                  },
+                  child: const Text("start")),
+              TextButton(
+                  onPressed: () {
+                    delegate.alignment = NodeAlignment.mid;
+                  },
+                  child: const Text("mid")),
+              TextButton(
+                  onPressed: () {
+                    delegate.alignment = NodeAlignment.end;
+                  },
+                  child: const Text("end"))
             ],
           ),
           const SizedBox(

@@ -305,15 +305,17 @@ class RenderTransformTreeView<T extends BaseNode>
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    assert(_effectiveTransform != null || !transformHitTests);
-
-    return result.addWithPaintTransform(
-      transform: transformHitTests ? _effectiveTransform : null,
-      position: position,
-      hitTest: (BoxHitTestResult result, Offset position) {
-        return super.hitTestChildren(result, position: position);
-      },
-    );
+    if (_effectiveTransform == null) {
+      return super.hitTestChildren(result, position: position);
+    } else {
+      return result.addWithPaintTransform(
+        transform: transformHitTests ? _effectiveTransform : null,
+        position: position,
+        hitTest: (BoxHitTestResult result, Offset position) {
+          return super.hitTestChildren(result, position: position);
+        },
+      );
+    }
   }
 
   void _paintWithEdges(PaintingContext context, Offset offset) {

@@ -5,10 +5,20 @@ import 'tree_edge_painter.dart';
 import 'tree_layout_delegate.dart';
 import 'tree_view_render.dart';
 
+/// [TreeView.clip] will create a tree view that can be clipped if overflowing and painting overflow bar in debug mode
+/// [TreeView.transform] will create a tree view that can be scaled up and down, and also can scale down if overflowing
 abstract class TreeView<T extends BaseNode, P extends TreeViewEdgePainter>
     extends MultiChildRenderObjectWidget {
   final T root;
+
+  /// [RenderTreeViewBase] will use [layoutDelegate] to layout all node widgets
+  /// if [TreeViewLayoutDelegate.layoutBuilder] is not provided, using the default layout builder
   final TreeViewLayoutDelegate layoutDelegate;
+
+  /// if want to clip the overflow area when the actual size is over the given size, use [ClipEdgePainter]
+  /// if want to scale the three view, use [TransformEdgePainter]
+  /// customize how to connect nodes with their parent by providing [TreeViewEdgePainter.edgePainter] and [TreeViewEdgePainter.paint]
+  /// if both are not provided, using the default setting instead
   final P edgePainter;
 
   TreeView({
