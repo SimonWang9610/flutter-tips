@@ -45,6 +45,7 @@ abstract class TreeView<T extends BaseNode, P extends TreeViewEdgePainter>
     required ClipEdgePainter edgePainter,
     required TreeViewLayoutDelegate layoutDelegate,
     required NodeWidgetBuilder<T> nodeBuilder,
+    Offset? delta,
   }) =>
       _ClipTreeView(
         key: key,
@@ -52,6 +53,7 @@ abstract class TreeView<T extends BaseNode, P extends TreeViewEdgePainter>
         nodeBuilder: nodeBuilder,
         layoutDelegate: layoutDelegate,
         edgePainter: edgePainter,
+        delta: delta ?? Offset.zero,
       );
 
   static Widget transform<T extends BaseNode>({
@@ -73,12 +75,14 @@ abstract class TreeView<T extends BaseNode, P extends TreeViewEdgePainter>
 }
 
 class _ClipTreeView<T extends BaseNode> extends TreeView<T, ClipEdgePainter> {
+  final Offset delta;
   _ClipTreeView({
     super.key,
     required super.root,
     required super.nodeBuilder,
     required super.layoutDelegate,
     required super.edgePainter,
+    this.delta = Offset.zero,
   });
 
   @override
@@ -87,6 +91,7 @@ class _ClipTreeView<T extends BaseNode> extends TreeView<T, ClipEdgePainter> {
       root: root,
       layoutDelegate: layoutDelegate,
       edgePainter: edgePainter,
+      delta: delta,
     );
   }
 
@@ -96,7 +101,8 @@ class _ClipTreeView<T extends BaseNode> extends TreeView<T, ClipEdgePainter> {
     renderObject
       ..root = root
       ..layoutDelegate = layoutDelegate
-      ..edgePainter = edgePainter;
+      ..edgePainter = edgePainter
+      ..delta = delta;
   }
 }
 

@@ -1,13 +1,12 @@
 import 'dart:math';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 
 import 'node.dart';
 import 'tree_edge_painter.dart';
 import 'tree_layout_delegate.dart';
 
-abstract class RenderTreeViewBase<
-        T extends BaseNode,
-        P extends TreeViewEdgePainter,
+class RenderTreeViewBase<T extends BaseNode, P extends TreeViewEdgePainter,
         L extends ContainerLayer> extends RenderBox
     with
         ContainerRenderObjectMixin<RenderBox, NodeBoxData>,
@@ -36,6 +35,7 @@ abstract class RenderTreeViewBase<
     if (!_root.isSameTree(value)) {
       _root = value;
       markNeedsLayout();
+      print("mark needs layout by root");
     }
   }
 
@@ -49,6 +49,7 @@ abstract class RenderTreeViewBase<
     if (oldDelegate.runtimeType != value.runtimeType ||
         value.shouldRelayout(oldDelegate)) {
       markNeedsLayout();
+      print("mark needs layout by delegate");
     }
     _layoutDelegate = value;
 
@@ -84,6 +85,12 @@ abstract class RenderTreeViewBase<
     final actualSize = _layoutDelegate.layout(constraints.loosen(), firstChild);
 
     size = constraints.constrain(actualSize);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    _edgePainter.paintEdges(root, context.canvas, offset);
+    defaultPaint(context, offset);
   }
 
   @override
@@ -141,9 +148,18 @@ class RenderClipTreeView<T extends BaseNode>
     required super.edgePainter,
     required super.layoutDelegate,
     super.children,
-  });
+    Offset delta = Offset.zero,
+  }) : _delta = delta;
 
   bool _hasOverflow = false;
+
+  Offset _delta = Offset.zero;
+  Offset get delta => _delta;
+
+  set delta(Offset delta) {
+    _delta += delta;
+    markNeedsPaint();
+  }
 
   @override
   void performLayout() {
@@ -156,11 +172,18 @@ class RenderClipTreeView<T extends BaseNode>
   }
 
   @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    return defaultHitTestChildren(result, position: position - delta);
+  }
+
+  @override
   void paint(PaintingContext context, Offset offset) {
-    _edgePainter.paintEdges(root, context.canvas, offset);
+    final globalOrigin = offset + delta;
+
+    _edgePainter.paintEdges(root, context.canvas, globalOrigin);
 
     if (!_hasOverflow) {
-      defaultPaint(context, offset);
+      defaultPaint(context, globalOrigin);
       return;
     }
 
@@ -170,7 +193,7 @@ class RenderClipTreeView<T extends BaseNode>
 
     _layer.layer = context.pushClipRect(
       needsCompositing,
-      offset,
+      globalOrigin,
       Offset.zero & size,
       defaultPaint,
       clipBehavior: _edgePainter.clipBehavior,
@@ -198,11 +221,15 @@ class RenderClipTreeView<T extends BaseNode>
       // rect is never used for drawing, just for determining the overflow
       // location and amount.
 
-      final overflowChildRect = Rect.fromLTWH(
-          0.0, 0.0, root.normalizedSize.width, root.normalizedSize.height);
+      final overflowChildRect = Rect.fromLTWH(delta.dx, delta.dy,
+          root.normalizedSize.width, root.normalizedSize.height);
       paintOverflowIndicator(
-          context, offset, Offset.zero & size, overflowChildRect,
-          overflowHints: debugOverflowHints);
+        context,
+        offset,
+        Offset.zero & size,
+        overflowChildRect,
+        overflowHints: debugOverflowHints,
+      );
       return true;
     }());
   }

@@ -6,9 +6,11 @@ import 'package:flutter_tips/exercises/example.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/gallery/example.dart';
 import 'package:flutter_tips/graph/clip_example.dart';
+import 'package:flutter_tips/graph/scrollable_example.dart';
 import 'package:flutter_tips/graph/transform_exmaple.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
+import 'package:flutter_tips/navigation/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
 import 'package:flutter_tips/planet/example.dart';
 import 'package:flutter_tips/tree/minimal_tree_example.dart';
@@ -105,6 +107,16 @@ class _MyHomePageState extends State<MyHomePage> {
                 );
               },
               child: const Text("transform tree view"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ScrollableTreeViewExample(),
+                  ),
+                );
+              },
+              child: const Text("scrollable tree view"),
             )
           ],
         ),
