@@ -34,6 +34,18 @@ class _CarouselSliderExampleState extends State<CarouselSliderExample> {
         color: Colors.red,
         child: Text('Fourth'),
       ),
+    ),
+    CarouselEntry(
+      builder: () => Card(
+        color: Colors.purple,
+        child: Text('Fifth'),
+      ),
+    ),
+    CarouselEntry(
+      builder: () => Card(
+        color: Colors.white,
+        child: Text('Sixth'),
+      ),
     )
   ];
 
@@ -57,6 +69,13 @@ class _CarouselSliderExampleState extends State<CarouselSliderExample> {
               child: CarouselSlider(
                 key: sliderKey,
                 entries: entries,
+                enlargeCenter: true,
+                infiniteScroll: true,
+                indicatorBuilder: (controller) {
+                  return DefaultCarouselIndicator(
+                    carouselEntryController: controller,
+                  );
+                },
               ),
             )
           ],

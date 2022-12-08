@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -8,15 +7,14 @@ import 'tree_edge_painter.dart';
 import 'tree_layout_delegate.dart';
 import 'tree_view.dart';
 
-class ScrollableTreeViewExample extends StatefulWidget {
-  const ScrollableTreeViewExample({Key? key}) : super(key: key);
+class ClipTreeViewExample extends StatefulWidget {
+  const ClipTreeViewExample({Key? key}) : super(key: key);
 
   @override
-  State<ScrollableTreeViewExample> createState() =>
-      _ScrollableTreeViewExampleState();
+  State<ClipTreeViewExample> createState() => _ClipTreeViewExampleState();
 }
 
-class _ScrollableTreeViewExampleState extends State<ScrollableTreeViewExample> {
+class _ClipTreeViewExampleState extends State<ClipTreeViewExample> {
   late final Node root = Node(
     id: "root",
     builder: (context) {
@@ -42,7 +40,6 @@ class _ScrollableTreeViewExampleState extends State<ScrollableTreeViewExample> {
   final edgePainter = ClipEdgePainter();
 
   Node? _selectedNode;
-  Offset _delta = Offset.zero;
 
   void _addNode() {
     if (_selectedNode == null) return;
@@ -74,13 +71,19 @@ class _ScrollableTreeViewExampleState extends State<ScrollableTreeViewExample> {
   }
 
   @override
+  void dispose() {
+    edgePainter.dispose();
+    delegate.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Clip Tree View example"),
       ),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -162,48 +165,29 @@ class _ScrollableTreeViewExampleState extends State<ScrollableTreeViewExample> {
                   onPressed: () {
                     delegate.alignment = NodeAlignment.end;
                   },
-                  child: const Text("end")),
-              TextButton(
-                onPressed: () {
-                  _delta = Offset.zero;
-                  setState(() {});
-                },
-                child: Text("restore"),
-              )
+                  child: const Text("end"))
             ],
           ),
           const SizedBox(
             height: 20,
           ),
           Expanded(
-            child: GestureDetector(
-              onPanUpdate: (details) {
-                final shift = details.delta;
-                _delta = shift;
-                print("current delta: $_delta, once delta: $shift");
-                setState(() {});
+            child: TreeView.clip<Node>(
+              root: root,
+              nodeBuilder: (node) {
+                return DecoratedBox(
+                  decoration: BoxDecoration(border: Border.all()),
+                  child: GestureDetector(
+                    onTap: () {
+                      _selectedNode = node;
+                      setState(() {});
+                    },
+                    child: node.builder(context),
+                  ),
+                );
               },
-              child: DecoratedBox(
-                decoration: BoxDecoration(border: Border.all()),
-                child: TreeView.clip<Node>(
-                  root: root,
-                  delta: _delta,
-                  nodeBuilder: (node) {
-                    return DecoratedBox(
-                      decoration: BoxDecoration(border: Border.all()),
-                      child: GestureDetector(
-                        onTap: () {
-                          _selectedNode = node;
-                          setState(() {});
-                        },
-                        child: node.builder(context),
-                      ),
-                    );
-                  },
-                  layoutDelegate: delegate,
-                  edgePainter: edgePainter,
-                ),
-              ),
+              layoutDelegate: delegate,
+              edgePainter: edgePainter,
             ),
           )
         ],

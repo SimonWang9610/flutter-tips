@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/blocks/list_block.dart';
-import 'package:flutter_tips/blocks/list_data.dart';
 import 'package:flutter_tips/carousel/example.dart';
-import 'package:flutter_tips/exercises/example.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/gallery/example.dart';
 import 'package:flutter_tips/graph/clip_example.dart';
@@ -10,10 +7,8 @@ import 'package:flutter_tips/graph/scrollable_example.dart';
 import 'package:flutter_tips/graph/transform_exmaple.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
-import 'package:flutter_tips/navigation/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
 import 'package:flutter_tips/planet/example.dart';
-import 'package:flutter_tips/tree/minimal_tree_example.dart';
 
 void main() {
   runApp(const MyApp());
@@ -87,36 +82,9 @@ class _MyHomePageState extends State<MyHomePage> {
           children: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ClipTreeViewExample(),
-                  ),
-                );
+                context.push(const CarouselSliderExample());
               },
-              child: const Text("Clip tree view"),
-            ),
-            const SizedBox(
-              height: 40,
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const TransformTreeViewExample(),
-                  ),
-                );
-              },
-              child: const Text("transform tree view"),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const ScrollableTreeViewExample(),
-                  ),
-                );
-              },
-              child: const Text("scrollable tree view"),
+              child: const Text("Carousel Slider Example"),
             )
           ],
         ),
@@ -131,51 +99,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class ScaledScrollView extends StatefulWidget {
-  const ScaledScrollView({Key? key}) : super(key: key);
-
-  @override
-  State<ScaledScrollView> createState() => _ScaledScrollViewState();
-}
-
-class _ScaledScrollViewState extends State<ScaledScrollView> {
-  final List<Widget> children = List.generate(
-    100,
-    (index) => Text(
-      "item $index",
-      textAlign: TextAlign.center,
-    ),
-  );
-
-  double _scaleY = 1.0;
-  double _scaleX = 1.0;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(border: Border.all()),
-      child: SingleChildScrollView(
-        child: GestureDetector(
-          onScaleStart: (details) {},
-          onScaleUpdate: (details) {
-            final vertical = details.verticalScale;
-            final horizontal = details.horizontalScale;
-            print("vertical: $vertical, horizontal: $horizontal");
-            _scaleX = horizontal;
-            _scaleY = vertical;
-            setState(() {});
-          },
-          onScaleEnd: (details) {},
-          child: Transform.scale(
-            scaleX: _scaleX,
-            scaleY: _scaleY,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: children,
-            ),
-          ),
-        ),
-      ),
-    );
+extension NavigationExt on BuildContext {
+  void push(Widget target) {
+    Navigator.of(this).push(MaterialPageRoute(builder: (_) => target));
   }
 }

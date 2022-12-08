@@ -75,6 +75,13 @@ class _TransformTreeViewExampleState extends State<TransformTreeViewExample> {
   }
 
   @override
+  void dispose() {
+    edgePainter.dispose();
+    delegate.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(

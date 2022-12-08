@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 
 import 'node.dart';
@@ -120,8 +119,8 @@ class RenderTreeViewBase<T extends BaseNode, P extends TreeViewEdgePainter,
   @override
   void dispose() {
     _layer.layer = null;
-    _layoutDelegate.dispose();
-    _edgePainter.dispose();
+    // _layoutDelegate.dispose();
+    // _edgePainter.dispose();
     super.dispose();
   }
 
