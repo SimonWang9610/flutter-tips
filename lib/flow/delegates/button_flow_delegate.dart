@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/flow/models.dart';
 
-abstract class ButtonFlowDelegate<T extends FlowTypeParams>
-    extends FlowDelegate {
+abstract class ButtonFlowDelegate extends FlowDelegate {
   final Animation<double> animation;
   final Alignment alignment;
-  final T params;
   ButtonFlowDelegate({
     required this.animation,
-    required this.params,
     this.alignment = Alignment.center,
   }) : super(repaint: animation);
 
   @override
   bool shouldRepaint(covariant ButtonFlowDelegate oldDelegate) {
-    print('should repaint');
-    return animation != oldDelegate.animation;
+    return animation != oldDelegate.animation ||
+        alignment != oldDelegate.alignment;
   }
 
   /// must ensure the constraint of children is loosen;
@@ -45,13 +41,13 @@ abstract class ButtonFlowDelegate<T extends FlowTypeParams>
   void paintChildren(FlowPaintingContext context) {
     final mainEntrySize = context.getChildSize(0) ?? Size.zero;
 
-    final anchor = getAnchorOffset(context.size, mainEntrySize);
+    final alignedOrigin = alignMainEntry(context.size, mainEntrySize);
 
-    if (params.autoFill && animation.value == 0) {
+    if (animation.value == 0) {
       print('paint first child');
       context.paintChild(
         0,
-        transform: transform(Offset.zero, anchor),
+        transform: transform(Offset.zero, alignedOrigin),
       );
       return;
     }
@@ -63,20 +59,21 @@ abstract class ButtonFlowDelegate<T extends FlowTypeParams>
 
       context.paintChild(
         i,
-        transform: transform(childOffset, anchor),
+        transform: transform(childOffset, alignedOrigin),
       );
     }
   }
 
   /// get the translation distance from the centre of the entry to the specific position determined by [alignment] and [parentSize]
 
-  Offset getAnchorOffset(Size parentSize, Size entrySize) {
-    final relativeOffset = Alignment.center.alongSize(entrySize);
+  Offset alignMainEntry(Size parentSize, Size entrySize) {
+    final relativeOffset = alignment.alongSize(entrySize);
 
     return alignment.alongSize(parentSize) - relativeOffset;
   }
 
   Offset calculateOffset(Size childSize, int index);
 
-  Matrix4 transform(Offset relativeOffset, Offset anchor);
+  /// calculate the position for each entry based the aligned [origin] and the relative offset calculated by [calculateOffset]
+  Matrix4 transform(Offset relativeOffset, Offset origin);
 }

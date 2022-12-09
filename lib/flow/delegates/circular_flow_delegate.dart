@@ -1,20 +1,24 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'button_flow_delegate.dart';
-import '../models.dart';
 
-class CircularFlowDelegate extends ButtonFlowDelegate<CircularFlowParams> {
+/// [radian] represents the radian between the second entry and the last entry, starting from [startRad]
+/// the first entry is always the main entry, so we flow entries from the second to the last ones
+/// therefore, the second entry is always put at [startRad], while the last one is always put at [startRad] + [radian]
+class CircularFlowDelegate extends ButtonFlowDelegate {
   double? perRad;
 
-  CircularFlowDelegate({
-    required Animation<double> animation,
-    required CircularFlowParams params,
-    alignment = Alignment.center,
-  }) : super(animation: animation, alignment: alignment, params: params);
+  final double radian;
+  final double startRad;
+  final double radius;
 
-  double get angle => params.angle;
-  double get startAngle => params.startAngle;
-  double get radius => params.radius;
+  CircularFlowDelegate({
+    required super.animation,
+    required this.radian,
+    required this.radius,
+    required this.startRad,
+    super.alignment = Alignment.center,
+  });
 
   @override
   void paintChildren(FlowPaintingContext context) {
@@ -22,42 +26,47 @@ class CircularFlowDelegate extends ButtonFlowDelegate<CircularFlowParams> {
     super.paintChildren(context);
   }
 
+  Size mainEntrySize = Size.zero;
+
+  /// we should ensure the distance between each child and the main entry is [radius]:
+  ///   therefore the effective radius should be [radius] + [mainEntrySize]
+  /// and each child may not be a regular square/circle
+  /// so we calculate [dx]/[dy] separately
   @override
   Offset calculateOffset(Size childSize, int index) {
     assert(perRad != null, 'have no [perRad] for each child');
 
-    if (params.autoFill && index == 0) {
+    if (index == 0) {
+      mainEntrySize = childSize;
       return Offset.zero;
     }
 
-    final effectiveAngle =
-        (params.autoFill ? index - 1 : index) * perRad! - startAngle;
+    final effectiveAngle = startRad + (index - 1) * perRad!;
 
-    // print('$index: $effectiveAngle, animation: ${animation.value}');
+    final dx = (radius + mainEntrySize.width / 2) *
+        cos(effectiveAngle) *
+        animation.value;
+    final dy = (radius + mainEntrySize.height / 2) *
+        sin(effectiveAngle) *
+        animation.value;
 
-    final dx =
-        (radius - childSize.width / 2) * cos(effectiveAngle) * animation.value;
-    final dy =
-        (radius - childSize.height / 2) * sin(effectiveAngle) * animation.value;
     return Offset(dx, dy);
   }
 
   @override
-  Matrix4 transform(Offset relativeOffset, Offset anchor) {
+  Matrix4 transform(Offset relativeOffset, Offset origin) {
     return Matrix4.translationValues(
-      anchor.dx + relativeOffset.dx,
-      anchor.dy + relativeOffset.dy,
+      origin.dx + relativeOffset.dx,
+      origin.dy + relativeOffset.dy,
       0,
     );
   }
 
+  /// the main entry should not be counted
   void calculatePerRad(int count) {
-    double divisor = 1;
+    final divisor = max(1, count - 2);
 
-    if (count > 2) {
-      divisor = params.autoFill ? count - 2 : count - 1;
-    }
-
-    perRad ??= angle / 180 * pi / divisor;
+    perRad ??= radian / divisor;
+    print("divisor: $divisor, perRad: $perRad");
   }
 }

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tips/carousel/example.dart';
 import 'package:flutter_tips/flow/example.dart';
 import 'package:flutter_tips/gallery/example.dart';
-import 'package:flutter_tips/graph/clip_example.dart';
-import 'package:flutter_tips/graph/scrollable_example.dart';
-import 'package:flutter_tips/graph/transform_exmaple.dart';
+import 'package:flutter_tips/tree_view/clip_example.dart';
+import 'package:flutter_tips/tree_view/scrollable_example.dart';
+import 'package:flutter_tips/tree_view/transform_exmaple.dart';
 import 'package:flutter_tips/list/custom_grid_list.dart';
 import 'package:flutter_tips/list/example.dart';
 import 'package:flutter_tips/overlay/overlay_example.dart';
@@ -85,6 +85,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 context.push(const CarouselSliderExample());
               },
               child: const Text("Carousel Slider Example"),
+            ),
+            TextButton(
+              onPressed: () {
+                context.push(const FlowButtonBarExample());
+              },
+              child: const Text("Flow Button Bar Example"),
             )
           ],
         ),

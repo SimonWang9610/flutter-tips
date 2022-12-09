@@ -2,58 +2,88 @@ import 'package:flutter/material.dart';
 import 'button_flow_delegate.dart';
 import '../models.dart';
 
-class LinearFlowDelegate extends ButtonFlowDelegate<LinearFlowParams> {
+class LinearFlowDelegate extends ButtonFlowDelegate {
+  final FlowDirection direction;
+  final double buttonGap;
+
   LinearFlowDelegate({
-    required Animation<double> animation,
-    required LinearFlowParams params,
-    alignment = Alignment.center,
-  }) : super(animation: animation, alignment: alignment, params: params);
+    required super.animation,
+    this.direction = FlowDirection.right,
+    super.alignment = Alignment.center,
+    this.buttonGap = 10,
+  });
 
-  FlowDirection get direction => params.direction;
+  @override
+  bool shouldRepaint(covariant LinearFlowDelegate oldDelegate) {
+    return super.shouldRepaint(oldDelegate) ||
+        direction != oldDelegate.direction ||
+        buttonGap != oldDelegate.buttonGap;
+  }
 
+  final List<Offset> _childrenOffsets = [Offset.zero];
+
+  /// [_childrenOffsets] record the offset of (top-left of each child + each child's width/height determined by [FlowDirection]
+  /// therefore, for [index]-th [FlowEntry], it will refer to its previous position to calculate its top-left offset
+  /// then store (its top-left [offset] + [shift]) in [_childrenOffsets]
+  /// the reason why we need to add [shift] is to ease calculating the next child's position
+  /// because we do not need to know its previous child's [Size]
   @override
   Offset calculateOffset(Size childSize, int index) {
     double? dx;
     double? dy;
+    double shiftX = 0.0;
+    double shiftY = 0.0;
 
-    final effectiveFactor = index * (1 + params.factor);
+    final Offset previousOffset =
+        _childrenOffsets.length > index ? _childrenOffsets[index] : Offset.zero;
 
     switch (direction) {
       case FlowDirection.left:
       case FlowDirection.right:
-        dx = childSize.width * effectiveFactor * animation.value;
+        dx = (previousOffset.dx + buttonGap) * animation.value;
+        shiftX = childSize.width;
         break;
       case FlowDirection.down:
       case FlowDirection.up:
-        dy = childSize.height * effectiveFactor * animation.value;
+        dy = (previousOffset.dy + buttonGap) * animation.value;
+        shiftY = childSize.height;
         break;
     }
-    return Offset(dx ?? 0, dy ?? 0);
+
+    final offset = Offset(dx ?? 0, dy ?? 0);
+    final shift = Offset(shiftX, shiftY);
+
+    if (_childrenOffsets.length <= (index + 1)) {
+      _childrenOffsets.add(offset + shift);
+    } else {
+      _childrenOffsets[index + 1] = offset + shift;
+    }
+    return offset;
   }
 
   @override
-  Matrix4 transform(Offset relativeOffset, Offset anchor) {
+  Matrix4 transform(Offset relativeOffset, Offset origin) {
     double? verticalOffset;
     double? horizontalOffset;
 
     switch (direction) {
       case FlowDirection.up:
-        verticalOffset = anchor.dy - relativeOffset.dy;
+        verticalOffset = origin.dy - relativeOffset.dy;
         break;
       case FlowDirection.down:
-        verticalOffset = anchor.dy + relativeOffset.dy;
+        verticalOffset = origin.dy + relativeOffset.dy;
         break;
       case FlowDirection.left:
-        horizontalOffset = anchor.dx - relativeOffset.dx;
+        horizontalOffset = origin.dx - relativeOffset.dx;
         break;
       case FlowDirection.right:
-        horizontalOffset = anchor.dx + relativeOffset.dx;
+        horizontalOffset = origin.dx + relativeOffset.dx;
         break;
     }
 
     return Matrix4.translationValues(
-      horizontalOffset ?? anchor.dx,
-      verticalOffset ?? anchor.dy,
+      horizontalOffset ?? origin.dx,
+      verticalOffset ?? origin.dy,
       0,
     );
   }
