@@ -7,7 +7,7 @@ typedef GalleryItemDragUpdate = void Function(GalleryItemDrag, Offset, Offset);
 typedef GalleryItemDragCallback = void Function(GalleryItemDrag);
 
 Offset _overlayOrigin(BuildContext context) {
-  final OverlayState overlay = Overlay.of(context)!;
+  final OverlayState overlay = Overlay.of(context);
   final RenderBox overlayBox = overlay.context.findRenderObject()! as RenderBox;
   return overlayBox.localToGlobal(Offset.zero);
 }

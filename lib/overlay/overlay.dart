@@ -32,7 +32,7 @@ class CustomAnimatedOverlay extends AnimatedOverlay {
 
   void insert(BuildContext context, {Widget? child}) {
     _entry = createAlignOverlay(child: child);
-    Overlay.of(context)?.insert(_entry!);
+    Overlay.of(context).insert(_entry!);
   }
 
   void alignChildTo(Offset globalPosition, Size size) {

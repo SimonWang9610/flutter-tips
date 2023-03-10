@@ -187,7 +187,7 @@ mixin GalleryGridDragDelegate<T extends StatefulWidget>
     );
 
     _draggingOverlay = OverlayEntry(builder: _drag!.buildOverlay);
-    Overlay.of(context)?.insert(_draggingOverlay!);
+    Overlay.of(context).insert(_draggingOverlay!);
 
     return _drag;
   }
