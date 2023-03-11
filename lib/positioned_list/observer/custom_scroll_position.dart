@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'scroll_extent.dart';
+
 class CustomScrollPosition extends ScrollPositionWithSingleContext {
   final ValueNotifier<ScrollExtent> _scrollExtent;
 
@@ -30,24 +32,4 @@ class CustomScrollPosition extends ScrollPositionWithSingleContext {
     _scrollExtent.dispose();
     super.dispose();
   }
-}
-
-class ScrollExtent {
-  final double min;
-  final double max;
-  final double current;
-
-  const ScrollExtent({this.min = 0.0, this.max = 0.0, this.current = 0.0});
-
-  @override
-  bool operator ==(covariant ScrollExtent other) {
-    return identical(this, other) || (hashCode == other.hashCode);
-  }
-
-  @override
-  int get hashCode => min.hashCode ^ max.hashCode ^ current.hashCode;
-
-  @override
-  String toString() =>
-      ("ScrollExtent(min: $min, max: $max, current: $current)");
 }

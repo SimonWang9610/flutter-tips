@@ -69,8 +69,8 @@ class OnstagePredicator {
     double tolerance = 0.5,
     PredicatorStrategy strategy = PredicatorStrategy.tolerance,
   }) {
-    print(
-        "leading: $leadingOffset, trailing: $trailingOffset, min: $leadingEdge, max: $trailingEdge");
+    // print(
+    //     "leading: $leadingOffset, trailing: $trailingOffset, min: $leadingEdge, max: $trailingEdge");
     switch (strategy) {
       case PredicatorStrategy.tolerance:
         return _tolerate(
