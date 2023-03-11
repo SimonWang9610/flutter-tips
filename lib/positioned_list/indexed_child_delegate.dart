@@ -60,7 +60,7 @@ class IndexedChildListDelegate extends SliverIndexedProxyDelegate {
 class IndexedChildBuilderDelegate extends SliverIndexedProxyDelegate {
   final ChildIndexGetter? findChildIndexCallback;
   final NullableIndexedWidgetBuilder builder;
-  final int childCount;
+  final int? childCount;
 
   IndexedChildBuilderDelegate(
     this.builder, {
@@ -87,12 +87,13 @@ class IndexedChildBuilderDelegate extends SliverIndexedProxyDelegate {
   Widget? buildItem(BuildContext context, int index) => builder(context, index);
 
   @override
-  int get estimatedChildCount => childCount;
+  int? get estimatedChildCount => childCount;
   @override
   bool shouldRebuild(covariant IndexedChildBuilderDelegate oldDelegate) =>
       oldDelegate.builder != builder || childCount != oldDelegate.childCount;
 }
 
+/// only [addProxy] is true and [observer] is null, would use [ObserverProxy] to wrap the item widget
 abstract class SliverIndexedProxyDelegate extends SliverChildDelegate {
   final bool addAutomaticKeepAlives;
   final bool addRepaintBoundaries;

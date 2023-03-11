@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tips/positioned_list/example/custom_view_example.dart';
 import 'package:flutter_tips/positioned_list/example/grid_example.dart';
 import 'package:flutter_tips/positioned_list/example/list_example.dart';
-import 'package:flutter_tips/positioned_list/observer/observer_proxy.dart';
-import 'positioned_list/positioned_list_delegate.dart';
-import 'positioned_list/custom_scroll_controller.dart';
 
 void main() {
   runApp(const MyApp());
@@ -78,6 +75,7 @@ class PositionedSliverExample extends StatelessWidget {
     return Scaffold(
       body: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             OutlinedButton(
               onPressed: () {
@@ -86,6 +84,14 @@ class PositionedSliverExample extends StatelessWidget {
                 );
               },
               child: const Text("List Example"),
+            ),
+            OutlinedButton(
+              onPressed: () {
+                context.push(
+                  const SeparatedPositionedListExample(),
+                );
+              },
+              child: const Text("Separated List Example"),
             ),
             OutlinedButton(
               onPressed: () {

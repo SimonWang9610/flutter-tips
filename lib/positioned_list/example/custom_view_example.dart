@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/positioned_list/observer/observer_proxy.dart';
-import 'package:flutter_tips/positioned_list/positioned_list_delegate.dart';
+import 'package:flutter_tips/positioned_list/indexed_child_delegate.dart';
 
 import '../observer/indexed_scroll_controller.dart';
 import 'sliver_jump.dart';

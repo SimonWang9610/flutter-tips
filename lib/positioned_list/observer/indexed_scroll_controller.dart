@@ -72,6 +72,10 @@ abstract class IndexedScrollController extends ScrollController
   /// [hasMultiChild] should be false for [SliverAppBar]
   ///
   /// [itemCount] should be the number of items for this [ScrollObserver] and same as the item count of the sliver
+  /// however, for [ListView.separated], [itemCount] should also include the number of separators, for example:
+  /// you specify [ListView.separated] has 30 items, the actual [itemCount] for [ScrollObserver] should be 60
+  /// since each separator would also be indexed and rendered in the viewport
+  ///
   /// if [itemCount] is null, [ScrollObserver] would treat the sliver as scrolling infinitely
   /// unless [hasMultiChild] is false (that would create [ScrollObserver.singleChild])
   ///
@@ -98,9 +102,12 @@ abstract class IndexedScrollController extends ScrollController
 
   /// show the sliver bound with [observerKey] in its closest viewport ancestor
   /// for [IndexedScrollController.multiObserver], [observerKey] is required
-  void showInViewport({String? observerKey}) {
+  void showInViewport({String? observerKey, int maxTraceCount = 5}) {
     final observer = createOrObtainObserver(observerKey: observerKey);
-    observer.showInViewport(position);
+    observer.showInViewport(
+      position,
+      maxTraceCount: maxTraceCount,
+    );
   }
 
   /// for [IndexedScrollController.multiObserver], [whichObserver] is required
@@ -378,9 +385,12 @@ class _MultiScrollController extends IndexedScrollController {
   }
 
   @override
-  void showInViewport({String? observerKey}) {
+  void showInViewport({String? observerKey, int maxTraceCount = 5}) {
     if (observerKey != null) {
-      super.showInViewport(observerKey: observerKey);
+      super.showInViewport(
+        observerKey: observerKey,
+        maxTraceCount: maxTraceCount,
+      );
     }
   }
 
