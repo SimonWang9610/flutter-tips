@@ -104,10 +104,13 @@ abstract class IndexedScrollController extends ScrollController
   /// for [IndexedScrollController.multiObserver], [observerKey] is required
   void showInViewport({String? observerKey, int maxTraceCount = 5}) {
     final observer = createOrObtainObserver(observerKey: observerKey);
-    observer.showInViewport(
-      position,
-      maxTraceCount: maxTraceCount,
-    );
+
+    if (observer.isActive) {
+      observer.showInViewport(
+        position,
+        maxTraceCount: maxTraceCount,
+      );
+    }
   }
 
   /// for [IndexedScrollController.multiObserver], [whichObserver] is required
@@ -241,8 +244,6 @@ abstract class IndexedScrollController extends ScrollController
     index = observer.normalizeIndex(index);
 
     if (!observer.visible) {
-      // todo: should enable animation when revealing the invisible viewport?
-      // todo: if enabling animation, should wait viewport revealing ending to schedule the next revealing?
       observer.showInViewport(position, duration: duration, curve: curve);
 
       Future.delayed(

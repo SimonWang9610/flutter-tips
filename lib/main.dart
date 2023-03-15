@@ -1,7 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_tips/positioned_list/example/custom_view_example.dart';
 import 'package:flutter_tips/positioned_list/example/grid_example.dart';
 import 'package:flutter_tips/positioned_list/example/list_example.dart';
+import 'package:flutter_tips/positioned_list/indexed_observer_proxy.dart';
 
 void main() {
   runApp(const MyApp());
@@ -67,47 +70,78 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 }
 
-class PositionedSliverExample extends StatelessWidget {
+class PositionedSliverExample extends StatefulWidget {
   const PositionedSliverExample({super.key});
+
+  @override
+  State<PositionedSliverExample> createState() =>
+      _PositionedSliverExampleState();
+}
+
+class _PositionedSliverExampleState extends State<PositionedSliverExample> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // _controller.jumpTo(1500);
+      print("current: ${_controller.position.pixels}");
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            OutlinedButton(
-              onPressed: () {
-                context.push(
-                  const PositionedListExample(),
-                );
-              },
-              child: const Text("List Example"),
+      body: Column(
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(border: Border.all()),
+            child: SizedBox(
+              height: 100,
+              child: Text("Header"),
             ),
-            OutlinedButton(
-              onPressed: () {
-                context.push(
-                  const SeparatedPositionedListExample(),
-                );
-              },
-              child: const Text("Separated List Example"),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              controller: _controller,
+              child: const ScrollableColumn(),
             ),
-            OutlinedButton(
-              onPressed: () {
-                context.push(const PositionedGridExample());
-              },
-              child: const Text("Grid Example"),
-            ),
-            OutlinedButton(
-              onPressed: () {
-                context.push(const CustomViewExample());
-              },
-              child: const Text("CustomScrollView Example"),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class ScrollableColumn extends StatelessWidget {
+  const ScrollableColumn({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final render = context.findRenderObject()!;
+
+      final viewport = RenderAbstractViewport.of(render);
+
+      final revealedOffset = viewport.getOffsetToReveal(render, 0.0);
+      print(revealedOffset);
+    });
+
+    return Column(
+      children: [
+        for (int i = 0; i < 30; i++)
+          IndexedObserverProxy(
+            index: i,
+            child: SizedBox(
+              height: 150,
+              child: Center(
+                child: Text("Child $i"),
+              ),
+            ),
+          )
+      ],
     );
   }
 }

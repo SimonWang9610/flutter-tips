@@ -24,6 +24,14 @@ class _CustomViewExampleState extends State<CustomViewExample> {
   final appbarObserverKey = "appbar";
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("Post frame callback");
+    });
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();

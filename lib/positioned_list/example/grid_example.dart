@@ -22,6 +22,14 @@ class _PositionedGridExampleState extends State<PositionedGridExample> {
   final String observerKey = "grid";
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("Post frame callback");
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(

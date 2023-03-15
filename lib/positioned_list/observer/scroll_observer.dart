@@ -95,6 +95,7 @@ abstract class ScrollObserver {
       _sliver = value;
       _shouldUpdateOffset = true;
     }
+    _shouldDoFinishLayout = true;
   }
 
   bool get isActive => _sliver != null;
@@ -115,6 +116,7 @@ abstract class ScrollObserver {
 
   bool _shouldUpdateOffset = false;
   bool _scheduledOffsetUpdate = false;
+  bool _shouldDoFinishLayout = false;
 
   bool get scheduledOffsetUpdate => _scheduledOffsetUpdate;
 
@@ -327,7 +329,8 @@ class _SingleChildObserver extends ScrollObserver {
     assert(sliver is RenderObjectWithChildMixin<RenderBox>,
         "${sliver.runtimeType} does not contain single box-based child");
 
-    if (shouldObserve(firstIndex, lastIndex)) {
+    if (_shouldDoFinishLayout) {
+      print("[$label]: do finish layout");
       assert(_size != null,
           "The size of child should be observed before finishing layout");
 
@@ -343,6 +346,7 @@ class _SingleChildObserver extends ScrollObserver {
       // } else {}
 
       _itemScrollExtent = ItemScrollExtent.empty();
+      _shouldDoFinishLayout = false;
     }
   }
 
@@ -426,25 +430,28 @@ class _MultiChildObserver extends ScrollObserver {
             SliverMultiBoxAdaptorParentData>,
         "${sliver.runtimeType} does not contain multi box-based children");
 
-    final bool shouldObserveModel = shouldObserve(firstIndex, lastIndex);
+    // final bool shouldObserveModel = shouldObserve(firstIndex, lastIndex);
 
-    if (shouldObserveModel) {
+    if (_shouldDoFinishLayout) {
       RenderBox? child = (sliver as RenderSliverMultiBoxAdaptor).firstChild;
 
       double totalExtent = 0;
       int count = 0;
 
+      int? first;
+      int? last;
+
       while (child != null) {
         final currentParentData =
             child.parentData! as SliverMultiBoxAdaptorParentData;
 
-        assert(
-          currentParentData.index! >= firstIndex &&
-              currentParentData.index! <= lastIndex,
-          "The ${currentParentData.index!}-th child is not in the given range: [$firstIndex, $lastIndex]."
-          "Typically, $runtimeType.onFinishLayout should be invoked by [SliverIndexedProxyDelegate] to "
-          "ensure the given range [$firstIndex, $lastIndex] is valid.",
-        );
+        // assert(
+        //   currentParentData.index! >= firstIndex &&
+        //       currentParentData.index! <= lastIndex,
+        //   "The ${currentParentData.index!}-th child is not in the given range: [$firstIndex, $lastIndex]."
+        //   "Typically, $runtimeType.onFinishLayout should be invoked by [SliverIndexedProxyDelegate] to "
+        //   "ensure the given range [$firstIndex, $lastIndex] is valid.",
+        // );
         print("[$label]: ${currentParentData.index}");
 
         assert(_sizes.containsKey(currentParentData.index));
@@ -453,6 +460,9 @@ class _MultiChildObserver extends ScrollObserver {
         final item = ItemScrollExtent.multi(currentParentData);
 
         _items[item.index] = item;
+
+        first = _compareFirst(first, currentParentData.index!);
+        last = _compareLast(last, currentParentData.index!);
 
         totalExtent += item.mainAxisOffset;
         count++;
@@ -467,8 +477,10 @@ class _MultiChildObserver extends ScrollObserver {
       //   "Please ensure not invoking [$label] $runtimeType.onFinishLayout manually unless you ensure the given range is valid",
       // );
 
-      _first = firstIndex;
-      _last = lastIndex;
+      _first = first!;
+      _last = last!;
+
+      print("[$label]: do finish layout, first: $first, last: $last");
 
       if (count == 0) {
         count = 1;
@@ -476,6 +488,8 @@ class _MultiChildObserver extends ScrollObserver {
 
       _estimatedAveragePageGap =
           (_estimatedAveragePageGap + totalExtent / count) / 2;
+
+      _shouldDoFinishLayout = false;
     }
   }
 
@@ -582,5 +596,21 @@ class _MultiChildObserver extends ScrollObserver {
     }
 
     print(onstageItems);
+  }
+}
+
+int _compareFirst(int? first, int current) {
+  if (first == null) {
+    return current;
+  } else {
+    return min(first, current);
+  }
+}
+
+int _compareLast(int? last, int current) {
+  if (last == null) {
+    return current;
+  } else {
+    return max(last, current);
   }
 }

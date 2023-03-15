@@ -96,9 +96,19 @@ class RenderObserverProxy extends RenderProxyBox {
 
       // [RenderSliverMultiBoxAdaptor] would notify the layout is finished
       // however, if the observer has only one child, we manually finish layout here
-      if (_observer != null && !_observer!.hasMultiChild) {
-        _observer?.onFinishLayout(0, 0);
-      }
+      // if (_observer != null && !_observer!.hasMultiChild) {
+      //   _observer?.onFinishLayout(0, 0);
+      // }
+    }
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    super.paint(context, offset);
+    print("[${_observer?.label}]: painting ends");
+
+    if (_observer != null) {
+      _observer?.onFinishLayout(0, 0);
     }
   }
 

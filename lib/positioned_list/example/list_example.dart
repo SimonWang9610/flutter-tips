@@ -22,6 +22,20 @@ class _PositionedListExampleState extends State<PositionedListExample> {
       IndexedScrollController.singleObserver();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("Post frame callback");
+
+      _controller.animateToIndex(
+        15,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.bounceIn,
+      );
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -127,6 +141,14 @@ class _SeparatedPositionedListExampleState
 
   final IndexedScrollController _controller =
       IndexedScrollController.singleObserver();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      print("Post frame callback");
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

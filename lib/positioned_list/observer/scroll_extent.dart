@@ -11,11 +11,13 @@ class ScrollExtent {
 
   /// the current scroll offset
   final double current;
+  final int hasCode;
 
   const ScrollExtent({
     this.min = 0.0,
     this.max = 0.0,
     this.current = 0.0,
+    this.hasCode = 0,
   });
 
   factory ScrollExtent.fromPosition(ScrollPosition position) {
