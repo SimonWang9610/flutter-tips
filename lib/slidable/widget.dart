@@ -1,11 +1,6 @@
-import 'package:flutter/rendering.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/slidable/render.dart';
-
-class SlideActionBoxData extends ContainerBoxParentData<RenderBox> {
-  bool isActionPanel = false;
-}
+import 'controller.dart';
 
 class SlideActionWidget extends ParentDataWidget<SlideActionBoxData> {
   final bool isActionPanel;
@@ -29,32 +24,24 @@ class SlideActionWidget extends ParentDataWidget<SlideActionBoxData> {
   }
 
   @override
-  Type get debugTypicalAncestorWidgetClass => SlidablePanel;
+  Type get debugTypicalAncestorWidgetClass => _SlidablePanel;
 }
 
-class SlidablePanel extends MultiChildRenderObjectWidget {
-  final Axis axis;
-  final SlideDirection direction;
+class _SlidablePanel extends MultiChildRenderObjectWidget {
   final SlideController controller;
-  final double visibleThreshold;
-  final List<Widget> actions;
-
-  const SlidablePanel({
-    Key? key,
-    this.axis = Axis.horizontal,
-    this.direction = SlideDirection.leftToRight,
+  final SlideActionLayoutDelegate layoutDelegate;
+  const _SlidablePanel({
     required this.controller,
-    this.visibleThreshold = 0.5,
-    required this.actions,
-  }) : super(key: key, children: actions);
+    required this.layoutDelegate,
+    required super.children,
+    super.key,
+  });
 
   @override
   RenderObject createRenderObject(BuildContext context) {
     return RenderSlidable(
-      axis: axis,
-      direction: direction,
       controller: controller,
-      visibleThreshold: visibleThreshold,
+      layoutDelegate: layoutDelegate,
     );
   }
 
@@ -62,9 +49,86 @@ class SlidablePanel extends MultiChildRenderObjectWidget {
   void updateRenderObject(
       BuildContext context, covariant RenderSlidable renderObject) {
     renderObject
-      ..axis = axis
-      ..direction = direction
-      ..controller = controller
-      ..visibleThreshold = visibleThreshold;
+      ..layoutDelegate = layoutDelegate
+      ..controller = controller;
+  }
+}
+
+class SlidablePanel extends StatefulWidget {
+  final Widget child;
+  final List<Widget> preActions;
+  final List<Widget> postActions;
+  const SlidablePanel({
+    super.key,
+    required this.child,
+    this.preActions = const [],
+    this.postActions = const [],
+  });
+
+  @override
+  State<SlidablePanel> createState() => _SlidablePanelState();
+}
+
+class _SlidablePanelState extends State<SlidablePanel> {
+  final SlideController _slideController =
+      SlideController(visibleThreshold: 0.4);
+
+  final SlideActionLayoutDelegate _layoutDelegate = SlideActionLayoutDelegate();
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant SlidablePanel oldWidget) {
+    print("didUpdateWidget");
+    super.didUpdateWidget(oldWidget);
+    _slideController.toggle();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final preActions =
+        widget.preActions.map((e) => SlideActionWidget(child: e));
+    final postActions =
+        widget.postActions.map((e) => SlideActionWidget(child: e));
+
+    return GestureDetector(
+      onHorizontalDragUpdate:
+          _slideController.axis == Axis.horizontal ? _onDragUpdate : null,
+      onVerticalDragUpdate:
+          _slideController.axis == Axis.vertical ? _onVerticalDragUpdate : null,
+      onHorizontalDragEnd: _onDragEnd,
+      onVerticalDragEnd: _onDragEnd,
+      child: _SlidablePanel(
+        controller: _slideController,
+        layoutDelegate: _layoutDelegate,
+        children: [
+          ...preActions,
+          widget.child,
+          ...postActions,
+        ],
+      ),
+    );
+  }
+
+  double _dragExtent = 0.0;
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    _dragExtent += details.delta.dx;
+    _slideController.slideTo(_dragExtent);
+  }
+
+  void _onVerticalDragUpdate(DragUpdateDetails details) {
+    _dragExtent += details.delta.dy;
+    _slideController.slideTo(_dragExtent);
+  }
+
+  void _onDragEnd(DragEndDetails details) async {
+    print("onDragEnd: velocity: ${details.velocity}");
+    _dragExtent = await _slideController.toggle();
   }
 }

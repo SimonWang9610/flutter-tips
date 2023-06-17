@@ -1,24 +1,11 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
-import 'widget.dart';
+import 'models.dart';
+import 'controller.dart';
 
-enum SlideDirection {
-  leftToRight,
-  rightToLeft,
-  topToBottom,
-  bottomToTop,
-}
-
-bool _directionIsMatchAxis(SlideDirection direction, Axis axis) {
-  switch (direction) {
-    case SlideDirection.leftToRight:
-    case SlideDirection.rightToLeft:
-      return axis == Axis.horizontal;
-    case SlideDirection.topToBottom:
-    case SlideDirection.bottomToTop:
-      return axis == Axis.vertical;
-  }
+class SlideActionBoxData extends ContainerBoxParentData<RenderBox> {
+  bool isActionPanel = false;
+  bool shouldPaint = true;
 }
 
 class RenderSlidable extends RenderBox
@@ -26,49 +13,12 @@ class RenderSlidable extends RenderBox
         ContainerRenderObjectMixin<RenderBox, SlideActionBoxData>,
         RenderBoxContainerDefaultsMixin<RenderBox, SlideActionBoxData> {
   RenderSlidable({
-    Axis axis = Axis.horizontal,
-    SlideDirection direction = SlideDirection.leftToRight,
     required SlideController controller,
-    double visibleThreshold = 0.5,
+    required SlideActionLayoutDelegate layoutDelegate,
     List<RenderBox>? children,
-  })  : _axis = axis,
-        _visibleThreshold = visibleThreshold,
-        _direction = direction,
-        _controller = controller,
-        assert(_directionIsMatchAxis(direction, axis),
-            "[$direction] does not matched [$axis]") {
+  })  : _controller = controller,
+        _layoutDelegate = layoutDelegate {
     addAll(children);
-  }
-
-  Axis _axis;
-  Axis get axis => _axis;
-  set axis(Axis axis) {
-    if (_axis != axis) {
-      assert(_directionIsMatchAxis(direction, _axis),
-          "[$direction] does not matched [$axis]");
-      _axis = axis;
-      markNeedsLayout();
-    }
-  }
-
-  double _visibleThreshold;
-  double get visibleThreshold => _visibleThreshold;
-  set visibleThreshold(double visibleThreshold) {
-    if (_visibleThreshold != visibleThreshold) {
-      _visibleThreshold = visibleThreshold;
-      markNeedsLayout();
-    }
-  }
-
-  SlideDirection _direction;
-  SlideDirection get direction => _direction;
-  set direction(SlideDirection direction) {
-    if (_direction != direction) {
-      assert(_directionIsMatchAxis(_direction, axis),
-          "[$direction] does not matched [$axis]");
-      _direction = direction;
-      markNeedsLayout();
-    }
   }
 
   SlideController _controller;
@@ -83,6 +33,15 @@ class RenderSlidable extends RenderBox
         oldController.removeListener(markNeedsLayout);
         _controller.addListener(markNeedsLayout);
       }
+    }
+  }
+
+  SlideActionLayoutDelegate _layoutDelegate;
+  SlideActionLayoutDelegate get layoutDelegate => _layoutDelegate;
+  set layoutDelegate(SlideActionLayoutDelegate layoutDelegate) {
+    if (_layoutDelegate != layoutDelegate) {
+      _layoutDelegate = layoutDelegate;
+      markNeedsLayout();
     }
   }
 
@@ -109,20 +68,22 @@ class RenderSlidable extends RenderBox
   /// other children are action children
   @override
   void performLayout() {
-    final mainChildSize = _layoutMainChild();
+    _cachedComputedSizes = _layoutMainChild();
 
-    _layoutActionChildren(mainChildSize);
+    layoutDelegate.layout(
+      _cachedComputedSizes,
+      ratio: controller.absoluteRatio,
+      axis: controller.axis,
+    );
 
-    size = mainChildSize;
+    size = _cachedComputedSizes.mainChildSize;
+    controller.size = size;
   }
+
+  late _ComputedSizes _cachedComputedSizes;
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    // if (childCount == 1 && controller.progress == 0) {
-    //   context.paintChild(firstChild!, offset);
-    //   return;
-    // }
-
     context.pushClipRect(
       needsCompositing,
       offset,
@@ -137,25 +98,55 @@ class RenderSlidable extends RenderBox
     while (child != null) {
       final childParentData = child.parentData as SlideActionBoxData;
 
-      if (!child.size.isEmpty) {
+      if (childParentData.shouldPaint) {
         context.paintChild(child, childParentData.offset + offset);
       }
 
       child = childParentData.nextSibling;
     }
+
+    // final parentData =
+    //     _cachedComputedSizes.mainChild.parentData as BoxParentData;
+
+    // context.paintChild(
+    //   _cachedComputedSizes.mainChild,
+    //   parentData.offset + offset,
+    // );
   }
 
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
-    return defaultHitTestChildren(result, position: position);
+    RenderBox? child = lastChild;
+
+    while (child != null) {
+      final childParentData = child.parentData as SlideActionBoxData;
+
+      if (childParentData.shouldPaint) {
+        final bool isHit = result.addWithPaintOffset(
+          offset: childParentData.offset,
+          position: position,
+          hitTest: (BoxHitTestResult result, Offset? transformed) {
+            assert(transformed == position - childParentData.offset);
+            return child!.hitTest(result, position: transformed!);
+          },
+        );
+
+        if (isHit) {
+          return true;
+        }
+      }
+
+      child = childParentData.previousSibling;
+    }
+
+    return false;
   }
 
-  Size _layoutMainChild() {
-    final mainChild = firstChild;
-    assert(mainChild != null);
+  _ComputedSizes _layoutMainChild() {
+    final (mainChild, preActionCount, postActionCount) = _findTheMainChild();
 
     final SlideActionBoxData childParentData =
-        mainChild!.parentData as SlideActionBoxData;
+        mainChild.parentData as SlideActionBoxData;
 
     assert(!childParentData.isActionPanel);
 
@@ -163,77 +154,218 @@ class RenderSlidable extends RenderBox
 
     final mainChildSize = mainChild.size;
 
-    final ratio = (1 - visibleThreshold) * controller.value;
+    final ratio = controller.absoluteRatio * (1 - controller.visibleThreshold);
 
-    final offset = switch (direction) {
+    final offset = switch (controller.direction) {
       SlideDirection.leftToRight => Offset(mainChildSize.width * ratio, 0),
       SlideDirection.rightToLeft => Offset(-mainChildSize.width * ratio, 0),
       SlideDirection.topToBottom => Offset(0, mainChildSize.height * ratio),
       SlideDirection.bottomToTop => Offset(0, -mainChildSize.height * ratio),
+      SlideDirection.idle => Offset.zero,
     };
 
     childParentData.offset = offset;
 
-    return mainChildSize;
+    late final Size sizeForActions;
+    late final Size sizeForVisiblePanel;
+
+    switch (controller.axis) {
+      case Axis.horizontal:
+        sizeForActions = Size(
+          mainChildSize.width * (1 - controller.visibleThreshold),
+          mainChildSize.height,
+        );
+        sizeForVisiblePanel = Size(
+          mainChildSize.width * controller.visibleThreshold,
+          mainChildSize.height,
+        );
+        break;
+      case Axis.vertical:
+        sizeForActions = Size(
+          mainChildSize.width,
+          mainChildSize.height * (1 - controller.visibleThreshold),
+        );
+        sizeForVisiblePanel = Size(
+          mainChildSize.width,
+          mainChildSize.height * controller.visibleThreshold,
+        );
+        break;
+    }
+
+    final preActionPoints = switch (controller.direction) {
+      SlideDirection.leftToRight || SlideDirection.topToBottom => (
+          Offset.zero,
+          sizeForActions.bottomRight(Offset.zero),
+        ),
+      _ => (Offset.zero, Offset.zero),
+    };
+
+    final postActionPoints = switch (controller.direction) {
+      SlideDirection.rightToLeft => (
+          sizeForVisiblePanel.topRight(Offset.zero),
+          mainChildSize.bottomRight(Offset.zero),
+        ),
+      SlideDirection.bottomToTop => (
+          sizeForVisiblePanel.bottomLeft(Offset.zero),
+          mainChildSize.bottomRight(Offset.zero),
+        ),
+      _ => (Offset.zero, Offset.zero),
+    };
+
+    return _ComputedSizes(
+      mainChild: mainChild,
+      mainChildSize: mainChildSize,
+      preActionPoints: preActionPoints,
+      postActionPoints: postActionPoints,
+      preActionCount: preActionCount,
+      postActionCount: postActionCount,
+    );
   }
 
-  void _layoutActionChildren(Size mainChildSize) {
-    final mainChildData = firstChild?.parentData as SlideActionBoxData?;
+  (RenderBox, int, int) _findTheMainChild() {
+    RenderBox? child = firstChild;
 
-    RenderBox? actionChild = mainChildData?.nextSibling;
+    int preActionCount = 0;
+    while (child != null) {
+      final childParentData = child.parentData as SlideActionBoxData;
 
-    if (actionChild == null) {
-      return;
+      if (!childParentData.isActionPanel) {
+        break;
+      }
+
+      preActionCount++;
+      child = childParentData.nextSibling;
     }
 
-    final ratio = (1 - visibleThreshold) * controller.value;
-
-    final mainAxisSpace = switch (axis) {
-      Axis.horizontal => mainChildSize.width * ratio / (childCount - 1),
-      Axis.vertical => mainChildSize.height * ratio / (childCount - 1),
-    };
-
-    final actionConstraints = switch (axis) {
-      Axis.horizontal => BoxConstraints.tightFor(
-          width: mainAxisSpace,
-          height: mainChildSize.height,
-        ),
-      Axis.vertical => BoxConstraints.tightFor(
-          width: mainChildSize.width,
-          height: mainAxisSpace,
-        ),
-    };
-    print(
-        "actionConstraints: $actionConstraints, progress: ${controller.value}");
-
-    int actionIndex = 0;
-
-    while (actionChild != null) {
-      final SlideActionBoxData childParentData =
-          actionChild.parentData as SlideActionBoxData;
-
-      assert(childParentData.isActionPanel);
-
-      actionChild.layout(
-        actionConstraints,
-        parentUsesSize: true,
-      );
-
-      childParentData.offset = switch (direction) {
-        SlideDirection.leftToRight => Offset(mainAxisSpace * actionIndex, 0),
-        SlideDirection.rightToLeft => Offset(
-            mainChildSize.width * (1 - ratio) + mainAxisSpace * actionIndex, 0),
-        SlideDirection.topToBottom => Offset(0, mainAxisSpace * actionIndex),
-        SlideDirection.bottomToTop => Offset(0,
-            mainChildSize.height * (1 - ratio) + mainAxisSpace * actionIndex),
-      };
-
-      print("size: ${actionChild.size} offset: ${childParentData.offset}");
-
-      actionChild = childParentData.nextSibling;
-      actionIndex++;
-    }
+    return (child!, preActionCount, childCount - preActionCount - 1);
   }
 }
 
-typedef SlideController = ValueListenable<double>;
+typedef PointsForActions = (Offset, Offset);
+
+class _ComputedSizes {
+  final RenderBox mainChild;
+  final Size mainChildSize;
+  final PointsForActions preActionPoints;
+  final PointsForActions postActionPoints;
+  final int preActionCount;
+  final int postActionCount;
+
+  const _ComputedSizes({
+    required this.mainChild,
+    required this.mainChildSize,
+    required this.preActionPoints,
+    required this.postActionPoints,
+    required this.preActionCount,
+    required this.postActionCount,
+  });
+
+  /// all actions would be laid out with the same [BoxConstraints]
+  /// that is averaged by the specific action count
+  /// [layoutRatio] determines how many the ratio of the rect would be used to calculate the constraints
+  LayoutSizeForAction getActionLayout(
+    Axis axis, {
+    required ActionPosition position,
+    double layoutRatio = 1.0,
+  }) {
+    final topLeft = position == ActionPosition.pre
+        ? preActionPoints.$1
+        : postActionPoints.$1;
+
+    final bottomRight = position == ActionPosition.pre
+        ? preActionPoints.$2
+        : postActionPoints.$2;
+
+    final actionCount =
+        position == ActionPosition.pre ? preActionCount : postActionCount;
+
+    final rect = Rect.fromPoints(topLeft, bottomRight);
+    final constraints = rect.getConstraints(axis, layoutRatio, actionCount);
+    final averageShift = rect.getShiftedOffset(axis, actionCount, layoutRatio);
+
+    return LayoutSizeForAction(
+      topLeft: topLeft,
+      bottomRight: bottomRight,
+      averageShift: averageShift,
+      constraints: constraints,
+      position: position,
+    );
+  }
+
+  @override
+  String toString() {
+    return '_ComputedSizes{mainChildSize: $mainChildSize, preActionPoints: $preActionPoints, postActionPoints: $postActionPoints, preActionCount: $preActionCount, postActionCount: $postActionCount}';
+  }
+}
+
+class SlideActionLayoutDelegate {
+  void layout(
+    _ComputedSizes computedSized, {
+    double ratio = 0.0,
+    Axis axis = Axis.horizontal,
+  }) {
+    final preActionLayout = computedSized.getActionLayout(
+      axis,
+      position: ActionPosition.pre,
+    );
+
+    final postActionLayout = computedSized.getActionLayout(
+      axis,
+      position: ActionPosition.post,
+    );
+
+    // print(preActionLayout);
+    // print(postActionLayout);
+
+    int preIndex = computedSized.preActionCount - 1;
+    RenderBox? preChild = _childBefore(computedSized.mainChild);
+
+    while (preChild != null) {
+      final childSize =
+          ChildLayoutHelper.layoutChild(preChild, preActionLayout.constraints);
+
+      final childParentData = preChild.parentData as SlideActionBoxData;
+
+      childParentData.offset =
+          preActionLayout.getRelativeOffset(preIndex, ratio);
+      childParentData.shouldPaint = !childSize.isEmpty;
+
+      preChild = _childBefore(preChild);
+      preIndex--;
+    }
+
+    assert(preIndex == -1);
+
+    int postIndex = computedSized.postActionCount - 1;
+    RenderBox? postChild = _childAfter(computedSized.mainChild);
+
+    while (postChild != null) {
+      final childSize = ChildLayoutHelper.layoutChild(
+          postChild, postActionLayout.constraints);
+
+      final childParentData = postChild.parentData as SlideActionBoxData;
+
+      childParentData.offset =
+          postActionLayout.getRelativeOffset(postIndex, ratio);
+      childParentData.shouldPaint = !childSize.isEmpty;
+
+      postChild = _childAfter(postChild);
+      postIndex--;
+    }
+    assert(postIndex == -1);
+  }
+
+  RenderBox? _childBefore(RenderBox? child) {
+    if (child == null) return null;
+    final parentData = child.parentData as SlideActionBoxData;
+
+    return parentData.previousSibling;
+  }
+
+  RenderBox? _childAfter(RenderBox? child) {
+    if (child == null) return null;
+    final parentData = child.parentData as SlideActionBoxData;
+
+    return parentData.nextSibling;
+  }
+}
