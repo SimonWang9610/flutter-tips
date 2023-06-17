@@ -15,6 +15,7 @@ class _SlidableExampleState extends State<SlidableExample> {
   @override
   Widget build(BuildContext context) {
     return const SlidablePanel(
+      axis: Axis.horizontal,
       preActions: [
         DecoratedBox(
           decoration: BoxDecoration(color: Colors.red),
@@ -22,12 +23,12 @@ class _SlidableExampleState extends State<SlidableExample> {
             child: Text("Delete"),
           ),
         ),
-        DecoratedBox(
-          decoration: BoxDecoration(color: Colors.green),
-          child: Center(
-            child: Text("Delete"),
-          ),
-        ),
+        // DecoratedBox(
+        //   decoration: BoxDecoration(color: Colors.green),
+        //   child: Center(
+        //     child: Text("Delete"),
+        //   ),
+        // ),
       ],
       postActions: [
         DecoratedBox(

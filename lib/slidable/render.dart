@@ -77,7 +77,7 @@ class RenderSlidable extends RenderBox
     );
 
     size = _cachedComputedSizes.mainChildSize;
-    controller.size = size;
+    controller.layoutSize = _cachedComputedSizes.layoutSize;
   }
 
   late _ComputedSizes _cachedComputedSizes;
@@ -291,6 +291,12 @@ class _ComputedSizes {
       position: position,
     );
   }
+
+  LayoutSize get layoutSize => LayoutSize(
+        size: mainChildSize,
+        preActionCount: preActionCount,
+        postActionCount: postActionCount,
+      );
 
   @override
   String toString() {

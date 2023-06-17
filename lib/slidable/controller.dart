@@ -2,6 +2,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'models.dart';
 
+const double _lowerBound = -1;
+const double _upperBound = 1;
+const double _middleBound = 0;
+
 class SlideController extends TickerProvider
     with ChangeNotifier, SlideControllerAnimationMixin {
   SlideController({
@@ -12,15 +16,18 @@ class SlideController extends TickerProvider
   })  : _axis = axis,
         _visibleThreshold = visibleThreshold {
     _animationController.addListener(() {
-      _ratio = _animationController.value;
       notifyListeners();
     });
-
-    _animationValue = _ratio;
   }
 
   @override
   Ticker createTicker(TickerCallback onTick) => Ticker(onTick);
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   Axis _axis;
   Axis get axis => _axis;
@@ -31,11 +38,11 @@ class SlideController extends TickerProvider
     }
   }
 
-  Size? _size;
-  Size? get size => _size;
-  set size(Size? size) {
-    if (_size != size) {
-      _size = size;
+  LayoutSize? _layoutSize;
+  LayoutSize? get layoutSize => _layoutSize;
+  set layoutSize(LayoutSize? layoutSize) {
+    if (_layoutSize != layoutSize) {
+      _layoutSize = layoutSize;
     }
   }
 
@@ -49,54 +56,35 @@ class SlideController extends TickerProvider
   }
 
   void slideTo(double value) {
-    assert(size != null);
-    final newRatio = switch (axis) {
-      Axis.horizontal => (value / size!.width).clamp(-1, 1).toDouble(),
-      Axis.vertical => (value / size!.height).clamp(-1, 1).toDouble(),
-    };
+    assert(layoutSize != null);
+    final newRatio = layoutSize!
+        .getRatio(axis, value)
+        ?.clamp(_lowerBound, _upperBound)
+        .toDouble();
 
-    if (newRatio != _ratio) {
-      // _ratio = newRatio;
-      // // value = _ratio;
+    if (newRatio != null && newRatio != ratio) {
       _animationValue = newRatio;
     }
   }
 
-  Future<double> toggle({
-    Curve curve = Curves.easeOutCubic,
+  /// animate to the nearest target determined by [isForward] and the current [SlideDirection]
+  Future<double?> toggle({
+    required bool isForward,
+    Curve curve = Curves.easeInOut,
     Duration duration = const Duration(milliseconds: 300),
   }) {
-    final future = switch (_ratio) {
-      < -0.3 => _animationController.animateTo(
-          -1,
-          curve: curve,
-          duration: duration,
-        ),
-      > -0.3 && < 0.3 => _animationController.animateTo(
-          0,
-          curve: curve,
-          duration: duration,
-        ),
-      > 0.3 => _animationController.animateTo(
-          1,
-          curve: curve,
-          duration: duration,
-        ),
-      _ => Future.value(),
-    };
+    final target = layoutSize!.getToggleTarget(direction, ratio, isForward);
 
-    return future.then((_) {
-      return switch (axis) {
-        Axis.horizontal => _ratio * size!.width,
-        Axis.vertical => _ratio * size!.height,
-      };
-    });
+    if (ratio != target) {
+      return _animationController
+          .animateTo(target, curve: curve, duration: duration)
+          .then((_) => layoutSize!.getDragExtent(axis, ratio));
+    }
+    return Future.value();
   }
 
-  /// the ratio of the distance that the main child has moved relative its size
-  double _ratio = 0;
-  double get ratio => _ratio;
-  double get absoluteRatio => _ratio.abs();
+  double get ratio => _animationController.value;
+  double get absoluteRatio => ratio.abs();
 
   SlideDirection get direction {
     if (ratio == 0) {
@@ -115,32 +103,14 @@ class SlideController extends TickerProvider
       };
     }
   }
-
-  @override
-  void dispose() {
-    _ratio = 0;
-    _animationController.dispose();
-    super.dispose();
-  }
 }
 
 mixin SlideControllerAnimationMixin on TickerProvider {
-  static const double _lowerBound = -1;
-  static const double _upperBound = 1;
-
   late final AnimationController _animationController = AnimationController(
     vsync: this,
     lowerBound: _lowerBound,
     upperBound: _upperBound,
-  );
-
-  set _duration(Duration duration) {
-    _animationController.duration = duration;
-  }
-
-  set _reverseDuration(Duration duration) {
-    _animationController.reverseDuration = duration;
-  }
+  )..value = _middleBound;
 
   set _animationValue(double value) {
     _animationController.value = value;

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tips/slidable/render.dart';
 import 'controller.dart';
 
-class SlideActionWidget extends ParentDataWidget<SlideActionBoxData> {
+class _SlideAction extends ParentDataWidget<SlideActionBoxData> {
   final bool isActionPanel;
-  const SlideActionWidget({
+  const _SlideAction({
     super.key,
     this.isActionPanel = true,
     required super.child,
@@ -54,15 +54,24 @@ class _SlidablePanel extends MultiChildRenderObjectWidget {
   }
 }
 
+typedef SlideEndCallback = void Function(SlideController, bool);
+
 class SlidablePanel extends StatefulWidget {
+  final double threshold;
   final Widget child;
+  final Axis axis;
+  final SlideEndCallback? onSlideEnd;
   final List<Widget> preActions;
   final List<Widget> postActions;
+
   const SlidablePanel({
     super.key,
     required this.child,
+    this.threshold = 0.4,
+    this.axis = Axis.horizontal,
     this.preActions = const [],
     this.postActions = const [],
+    this.onSlideEnd,
   });
 
   @override
@@ -70,37 +79,48 @@ class SlidablePanel extends StatefulWidget {
 }
 
 class _SlidablePanelState extends State<SlidablePanel> {
-  final SlideController _slideController =
-      SlideController(visibleThreshold: 0.4);
+  late final SlideController _slideController;
 
   final SlideActionLayoutDelegate _layoutDelegate = SlideActionLayoutDelegate();
 
   @override
-  void dispose() {
-    _slideController.dispose();
-
-    super.dispose();
+  void initState() {
+    super.initState();
+    _slideController = SlideController(
+      visibleThreshold: widget.threshold,
+      axis: widget.axis,
+    );
   }
 
   @override
   void didUpdateWidget(covariant SlidablePanel oldWidget) {
-    print("didUpdateWidget");
     super.didUpdateWidget(oldWidget);
-    _slideController.toggle();
+
+    if (oldWidget.threshold != widget.threshold) {
+      _slideController.visibleThreshold = widget.threshold;
+    }
+
+    if (oldWidget.axis != widget.axis) {
+      _slideController.axis = widget.axis;
+    }
+  }
+
+  @override
+  void dispose() {
+    _slideController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final preActions =
-        widget.preActions.map((e) => SlideActionWidget(child: e));
-    final postActions =
-        widget.postActions.map((e) => SlideActionWidget(child: e));
+    final preActions = widget.preActions.map((e) => _SlideAction(child: e));
+    final postActions = widget.postActions.map((e) => _SlideAction(child: e));
 
     return GestureDetector(
       onHorizontalDragUpdate:
           _slideController.axis == Axis.horizontal ? _onDragUpdate : null,
       onVerticalDragUpdate:
-          _slideController.axis == Axis.vertical ? _onVerticalDragUpdate : null,
+          _slideController.axis == Axis.vertical ? _onDragUpdate : null,
       onHorizontalDragEnd: _onDragEnd,
       onVerticalDragEnd: _onDragEnd,
       child: _SlidablePanel(
@@ -116,19 +136,25 @@ class _SlidablePanelState extends State<SlidablePanel> {
   }
 
   double _dragExtent = 0.0;
+  bool _isForward = false;
 
   void _onDragUpdate(DragUpdateDetails details) {
-    _dragExtent += details.delta.dx;
-    _slideController.slideTo(_dragExtent);
-  }
+    final shift = _slideController.axis == Axis.horizontal
+        ? details.delta.dx
+        : details.delta.dy;
 
-  void _onVerticalDragUpdate(DragUpdateDetails details) {
-    _dragExtent += details.delta.dy;
+    _isForward = _dragExtent * shift > 0;
+    _dragExtent += shift;
     _slideController.slideTo(_dragExtent);
   }
 
   void _onDragEnd(DragEndDetails details) async {
-    print("onDragEnd: velocity: ${details.velocity}");
-    _dragExtent = await _slideController.toggle();
+    final dragExtent = await _slideController.toggle(
+      isForward: _isForward,
+    );
+
+    _dragExtent = dragExtent ?? 0;
+
+    _isForward = false;
   }
 }

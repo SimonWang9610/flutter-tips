@@ -8,58 +8,6 @@ enum SlideDirection {
   bottomToTop,
 }
 
-typedef PointsForActions = (Offset, Offset);
-
-class ComputedSizes {
-  final RenderBox mainChild;
-  final Size mainChildSize;
-  final PointsForActions preActionPoints;
-  final PointsForActions postActionPoints;
-  final int preActionCount;
-  final int postActionCount;
-
-  const ComputedSizes({
-    required this.mainChild,
-    required this.mainChildSize,
-    required this.preActionPoints,
-    required this.postActionPoints,
-    required this.preActionCount,
-    required this.postActionCount,
-  });
-
-  /// all actions would be laid out with the same [BoxConstraints]
-  /// that is averaged by the specific action count
-  /// [layoutRatio] determines how many the ratio of the rect would be used to calculate the constraints
-  LayoutSizeForAction getActionLayout(
-    Axis axis, {
-    required ActionPosition position,
-    double layoutRatio = 1.0,
-  }) {
-    final topLeft = position == ActionPosition.pre
-        ? preActionPoints.$1
-        : postActionPoints.$1;
-
-    final bottomRight = position == ActionPosition.pre
-        ? preActionPoints.$2
-        : postActionPoints.$2;
-
-    final actionCount =
-        position == ActionPosition.pre ? preActionCount : postActionCount;
-
-    final rect = Rect.fromPoints(topLeft, bottomRight);
-    final constraints = rect.getConstraints(axis, layoutRatio, actionCount);
-    final averageShift = rect.getShiftedOffset(axis, actionCount, layoutRatio);
-
-    return LayoutSizeForAction(
-      topLeft: topLeft,
-      bottomRight: bottomRight,
-      averageShift: averageShift,
-      constraints: constraints,
-      position: position,
-    );
-  }
-}
-
 enum ActionPosition {
   pre,
   post,
@@ -143,5 +91,56 @@ extension ValidateRect on Rect {
           height * ratio / count,
         ),
     };
+  }
+}
+
+class LayoutSize {
+  final Size size;
+  final int preActionCount;
+  final int postActionCount;
+
+  const LayoutSize({
+    required this.size,
+    required this.preActionCount,
+    required this.postActionCount,
+  });
+
+  /// if no action, return null
+  /// by doing so, we could disable sliding if no actions along the [axis]
+  double? getRatio(Axis axis, double dragExtent) {
+    if ((dragExtent > 0 && preActionCount == 0) ||
+        (dragExtent < 0 && postActionCount == 0)) {
+      return null;
+    }
+
+    final mainAxis = axis == Axis.horizontal ? size.width : size.height;
+    final ratio = dragExtent / mainAxis;
+    return ratio;
+  }
+
+  /// [ratio] > 0  indicates we are sliding to see the pre actions
+  /// [ratio] < 0  indicates we are sliding to see the post actions
+  double getToggleTarget(
+      SlideDirection direction, double ratio, bool isForward) {
+    if (ratio >= 0 && preActionCount == 0) {
+      return 0;
+    } else if (ratio <= 0 && postActionCount == 0) {
+      return 0;
+    }
+
+    return switch (direction) {
+      SlideDirection.leftToRight ||
+      SlideDirection.topToBottom =>
+        isForward ? 1 : 0,
+      SlideDirection.bottomToTop ||
+      SlideDirection.rightToLeft =>
+        isForward ? -1 : 0,
+      SlideDirection.idle => 0,
+    };
+  }
+
+  double getDragExtent(Axis axis, double ratio) {
+    final mainAxis = axis == Axis.horizontal ? size.width : size.height;
+    return mainAxis * ratio;
   }
 }
