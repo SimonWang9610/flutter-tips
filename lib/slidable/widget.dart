@@ -76,6 +76,11 @@ class SlidablePanel extends StatefulWidget {
 
   @override
   State<SlidablePanel> createState() => _SlidablePanelState();
+
+  static SlideController? of(BuildContext context) {
+    final renderObject = context.findRenderObject() as RenderSlidable?;
+    return renderObject?.controller;
+  }
 }
 
 class _SlidablePanelState extends State<SlidablePanel> {

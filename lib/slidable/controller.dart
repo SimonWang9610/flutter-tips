@@ -68,6 +68,9 @@ class SlideController extends TickerProvider
   }
 
   /// animate to the nearest target determined by [isForward] and the current [SlideDirection]
+  /// if [isForward] is true, it will animate to the next target
+  /// if [isForward] is false, it will always restore to the [_middleBound], hiding all actions
+
   Future<double?> toggle({
     required bool isForward,
     Curve curve = Curves.easeInOut,
@@ -83,6 +86,10 @@ class SlideController extends TickerProvider
     return Future.value();
   }
 
+  /// represents the current sliding ratio relative to the size of the [SlidePanel]
+  /// if [ratio] > 0  indicates we are sliding to see the pre actions
+  /// if [ratio] < 0  indicates we are sliding to see the post actions
+  /// if [ratio] == 0 indicates we are not sliding, all actions are hidden, only the main child is visible
   double get ratio => _animationController.value;
   double get absoluteRatio => ratio.abs();
 
