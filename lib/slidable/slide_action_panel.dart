@@ -1,10 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter_tips/slidable/action_item_render.dart';
-import 'package:flutter_tips/slidable/action_motion.dart';
-import 'package:flutter_tips/slidable/action_render.dart';
+import 'package:flutter_tips/slidable/action_item_expander.dart';
+import 'package:flutter_tips/slidable/action_layout_delegate.dart';
+import 'package:flutter_tips/slidable/slide_action_render.dart';
 
+/// By wrapping [child] using [ActionItem], you can specify the flex value of the child.
 class ActionItem extends ParentDataWidget<SlideActionBoxData> {
   final int flex;
   const ActionItem({
@@ -30,6 +29,17 @@ class ActionItem extends ParentDataWidget<SlideActionBoxData> {
   Type get debugTypicalAncestorWidgetClass => SlideActionPanel;
 }
 
+/// if [actionLayout] is aligned using [ActionAlignment.flex], [actions] could be wrapped in [ActionItem] to specify the flex value.
+/// if [actions] are not wrapped in [ActionItem], each item would have a default flex value of 1, behaving like [ActionAlignment.spaceEvenly].
+///
+/// if [actionLayout] is aligned using [ActionAlignment.spaceEvenly],
+/// each action item would have same width/height determined by [SlidablePanel.axis].
+///
+/// [expander] would be used to determine whether to expand the action item.
+/// the expanded item would occupy the total space of [SlideActionPanel],
+/// while other items would not be visible and not respond to pointer events.
+///
+/// if [actions] is empty, the [SlidablePanel] can still slide but no widget would be shown.
 class SlideActionPanel<T extends Widget> extends MultiChildRenderObjectWidget {
   final ActionLayout actionLayout;
   final double slidePercent;

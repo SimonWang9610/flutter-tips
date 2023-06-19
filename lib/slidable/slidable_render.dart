@@ -1,5 +1,5 @@
 import 'package:flutter/rendering.dart';
-import 'package:flutter_tips/slidable/action_render.dart';
+import 'package:flutter_tips/slidable/slide_action_render.dart';
 
 import 'models.dart';
 import 'controller.dart';
@@ -53,13 +53,10 @@ class RenderSlidable extends RenderBox
     }
   }
 
-  /// [firstChild] should be always the main child
-  /// other children are action children
   @override
   void performLayout() {
-    assert(childCount <= 3);
-
-    print("layout RenderSlidable");
+    assert(childCount <= 3,
+        'RenderSlidable only support 3 children at most. That would be a pre [RenderSlideAction], the main child, and a post [RenderSlideAction].');
 
     final computedSize = _layoutMainChild();
 
@@ -128,6 +125,7 @@ class RenderSlidable extends RenderBox
     return false;
   }
 
+  /// the top-left of the main child would be updated when the [controller] is animating/sliding.
   _ComputedSizes _layoutMainChild() {
     final (mainChild, hasPreAction, hasPostAction) = _findTheMainChild();
 
@@ -170,6 +168,7 @@ class RenderSlidable extends RenderBox
     );
   }
 
+  /// todo: ensure only one main child that is not a [RenderSlideAction]
   (RenderBox, bool, bool) _findTheMainChild() {
     RenderBox? child = firstChild;
 

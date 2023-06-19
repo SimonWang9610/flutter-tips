@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/slidable/action_item_render.dart';
-import 'package:flutter_tips/slidable/render.dart';
+import 'package:flutter_tips/slidable/action_item_expander.dart';
+import 'package:flutter_tips/slidable/slidable_render.dart';
 import 'controller.dart';
 
 import 'slide_action_panel.dart';
@@ -29,6 +29,20 @@ typedef SlideEndCallback = void Function(SlideController, bool);
 typedef SlideActionPanelBuilder = SlideActionPanel Function(
     BuildContext, double, ActionItemExpander?);
 
+/// [SlidablePanel] is a widget that can slide to show actions.
+/// [child] would be the main child of the panel.
+///
+/// [preActionPanelBuilder] would be used to build the panel that contains actions before the main child.
+/// if [preActionPanelBuilder] is null, the panel cannot slide to show the pre actions.
+///
+/// [postActionPanelBuilder] would be used to build the panel that contains actions after the main child.
+/// if [postActionPanelBuilder] is null, the panel cannot slide to show the post actions.
+///
+/// [maxSlideThreshold] would be used to determine the max ratio of the panel that can slide, it should be in [0, 1]
+///
+/// each [SlideActionPanel] would be sized by the size of [child] * [maxSlideThreshold],
+/// by doing so, the internal changes of [SlideActionPanel] would not affect the size of [child], for example,
+/// expanding the action item would not invoke [RenderSlidable.performLayout]
 class SlidablePanel extends StatefulWidget {
   final double maxSlideThreshold;
   final Widget child;
@@ -120,6 +134,7 @@ class _SlidablePanelState extends State<SlidablePanel> {
         : null;
 
     return GestureDetector(
+      // todo: fix bug: when dragging starts, it may not follow the pointer position and jump to another position
       onHorizontalDragStart: (details) {
         print("onHorizontalDragStart: $_dragExtent");
       },

@@ -1,7 +1,7 @@
 import 'package:flutter/rendering.dart';
-import 'package:flutter_tips/slidable/action_item_render.dart';
-import 'package:flutter_tips/slidable/action_motion.dart';
-import 'package:flutter_tips/slidable/render.dart';
+import 'package:flutter_tips/slidable/action_item_expander.dart';
+import 'package:flutter_tips/slidable/action_layout_delegate.dart';
+import 'package:flutter_tips/slidable/slidable_render.dart';
 
 class SlideActionBoxData extends ContainerBoxParentData<RenderBox> {
   int? flex;

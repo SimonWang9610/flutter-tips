@@ -1,58 +1,13 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter_tips/slidable/action_item_render.dart';
-import 'package:flutter_tips/slidable/action_render.dart';
+import 'package:flutter_tips/slidable/action_item_expander.dart';
+import 'package:flutter_tips/slidable/slide_action_render.dart';
 import 'package:flutter_tips/slidable/models.dart';
 
-class SizedConstraints {
-  final Size size;
-  final List<BoxConstraints> constraints;
-  final Axis axis;
-
-  const SizedConstraints({
-    required this.size,
-    required this.constraints,
-    required this.axis,
-  });
-
-  Offset getShiftFromConstraints(int index) {
-    final shift = switch (axis) {
-      Axis.horizontal => Offset(
-          constraints[index].maxWidth,
-          0,
-        ),
-      Axis.vertical => Offset(
-          0,
-          constraints[index].maxHeight,
-        ),
-    };
-
-    return shift;
-  }
-
-  Offset get averageShift {
-    final shift = switch (axis) {
-      Axis.horizontal => Offset(size.width / constraints.length, 0),
-      Axis.vertical => Offset(0, size.height / constraints.length),
-    };
-
-    return shift;
-  }
-
-  Offset get totalShift {
-    final shift = switch (axis) {
-      Axis.horizontal => Offset(size.width, 0),
-      Axis.vertical => Offset(0, size.height),
-    };
-
-    return shift;
-  }
-}
-
-abstract class BaseActionLayout {
+abstract class BaseActionLayoutDelegate {
   final ActionPosition position;
   final ActionMotion motion;
   final ActionItemExpander? expander;
-  BaseActionLayout({
+  BaseActionLayoutDelegate({
     required this.position,
     required this.motion,
     this.expander,
@@ -91,20 +46,27 @@ abstract class BaseActionLayout {
     }
   }
 
+  /// If [expander] is not null, the [expander]'s index would be expanded to occupy the total space of the [SlideActionPanel]
+  /// however, the [ActionItemExpander.index] may not occupy the total space after expanded
+  /// therefore, we should add the remained space to the [ActionItemExpander.index] before expanding it
+  /// currently, all action items are laid out using a tight [BoxConstraints]
   SizedConstraints getSizedConstraints({
     required Size size,
     required Axis axis,
     required int childCount,
   });
 
-  // Offset getRelativeOffset({
-  //   required SizedConstraints sizedConstraints,
-  //   required int index,
-  //   required double ratio,
-  // });
-
   Offset _previousShift = Offset.zero;
 
+  /// [index]'s offset would be relative to the previous [index]'s offset
+  /// currently, each action item is laid out using a tight [BoxConstraints]
+  /// so [SizedConstraints.getShiftFromConstraints] is used to get the size of the previous action item
+  /// for [ActionMotion.stretch] and [ActionMotion.drawer], the previous action item's size is multiplied by [ratio],
+  /// which is changed by the [SlideController.animationValue]
+  /// for [ActionMotion.behind], action items' origin do not change during animation,
+  /// for [ActionMotion.scroll], action items' origin are translated during animation
+  ///! different [ActionPosition] would translate differently based on its [ActionMotion]
+  /// todo: to position action items based on its [ActionMotion] and [ActionPosition] when expanding
   Offset getRelativeOffset({
     required SizedConstraints sizedConstraints,
     required int index,
@@ -123,27 +85,64 @@ abstract class BaseActionLayout {
         break;
     }
 
+    final shouldChangeOrigin =
+        (motion == ActionMotion.scroll && position == ActionPosition.pre) ||
+            (motion == ActionMotion.behind && position == ActionPosition.post);
+
     return shift +
-        (motion == ActionMotion.scroll
+        (shouldChangeOrigin
             ? sizedConstraints.totalShift * (ratio - 1)
             : Offset.zero);
   }
 
+  /// if [expander] is not null, the [expander]'s index would be expanded to occupy the total space of the [SlideActionPanel]
+  /// the other action items would be compressed to empty during animation of the [expander]
+  /// if [expander] is null, all action items would have the same ratio and be laid out normally
   (double, double) get _itemExpanderRatios {
     final unExpandedRatio = 1 - (expander?.progress ?? 0.0);
     final expandedRatio = 1 + (expander?.progress ?? 0.0);
 
     return (expandedRatio, unExpandedRatio);
   }
+
+  void _fillRemainSpace(
+    List<BoxConstraints> constraints, {
+    required Axis axis,
+    double remainWidth = 0.0,
+    double remainHeight = 0.0,
+  }) {
+    if (expander?.index != null) {
+      final indexConstraints = constraints[expander!.index!];
+
+      switch (axis) {
+        case Axis.horizontal:
+          constraints[expander!.index!] = BoxConstraints.tightFor(
+            width: indexConstraints.maxWidth + remainWidth,
+            height: indexConstraints.maxHeight,
+          );
+          break;
+        case Axis.vertical:
+          constraints[expander!.index!] = BoxConstraints.tightFor(
+            width: indexConstraints.maxWidth,
+            height: indexConstraints.maxHeight + remainHeight,
+          );
+          break;
+      }
+    }
+  }
 }
 
-class SpaceEvenlyLayout extends BaseActionLayout {
-  SpaceEvenlyLayout({
+class SpaceEvenlyLayoutDelegate extends BaseActionLayoutDelegate {
+  SpaceEvenlyLayoutDelegate({
     required super.motion,
     required super.position,
     super.expander,
   });
 
+  /// If [expander] is not null, the [expander]'s index would be expanded to occupy the total space of the [SlideActionPanel]
+  /// however, the [ActionItemExpander.index] may not occupy the total space after expanded
+  /// therefore, we should add the remained space to the [ActionItemExpander.index] before expanding it
+  /// currently, all action items are laid out using a tight [BoxConstraints]
   @override
   SizedConstraints getSizedConstraints({
     required Size size,
@@ -155,39 +154,46 @@ class SpaceEvenlyLayout extends BaseActionLayout {
     final averageWidth = size.width / childCount;
     final averageHeight = size.height / childCount;
 
-    // final childConstraints = switch (axis) {
-    //   Axis.horizontal => BoxConstraints.tightFor(
-    //       width: size.width / childCount,
-    //       height: size.height,
-    //     ),
-    //   Axis.vertical => BoxConstraints.tightFor(
-    //       width: size.width,
-    //       height: size.height / childCount,
-    //     ),
-    // };
     final (expandedRatio, unExpandedRatio) = _itemExpanderRatios;
 
     final constraints = <BoxConstraints>[];
 
+    double remainWidth = size.width;
+    double remainHeight = size.height;
+
     for (int i = 0; i < childCount; i++) {
       final indexExpanded = expander?.index == i;
 
-      final indexConstraints = switch (axis) {
-        Axis.horizontal => BoxConstraints.tightFor(
+      switch (axis) {
+        case Axis.horizontal:
+          final indexConstraints = BoxConstraints.tightFor(
             width: indexExpanded
                 ? averageWidth * expandedRatio
                 : averageWidth * unExpandedRatio,
             height: size.height,
-          ),
-        Axis.vertical => BoxConstraints.tightFor(
+          );
+          remainWidth -= indexConstraints.maxWidth;
+          constraints.add(indexConstraints);
+          break;
+        case Axis.vertical:
+          final indexConstraints = BoxConstraints.tightFor(
             width: size.width,
             height: indexExpanded
                 ? averageHeight * expandedRatio
                 : averageHeight * unExpandedRatio,
-          ),
-      };
-      constraints.add(indexConstraints);
+          );
+          remainHeight -= indexConstraints.maxHeight;
+          constraints.add(indexConstraints);
+          break;
+      }
     }
+
+    _fillRemainSpace(
+      constraints,
+      axis: axis,
+      remainWidth: remainWidth,
+      remainHeight: remainHeight,
+    );
 
     return SizedConstraints(
       size: size,
@@ -195,27 +201,11 @@ class SpaceEvenlyLayout extends BaseActionLayout {
       constraints: constraints,
     );
   }
-
-  // @override
-  // Offset getRelativeOffset({
-  //   required SizedConstraints sizedConstraints,
-  //   required int index,
-  //   required double ratio,
-  // }) {
-  //   assert(ratio >= 0 && ratio <= 1);
-  //   final shift = sizedConstraints.averageShift * index.toDouble();
-
-  //   return switch (motion) {
-  //     ActionMotion.stretch || ActionMotion.drawer => shift * ratio,
-  //     ActionMotion.behind => shift,
-  //     ActionMotion.scroll => shift + sizedConstraints.totalShift * (ratio - 1),
-  //   };
-  // }
 }
 
-class FlexLayout extends BaseActionLayout {
+class FlexLayoutDelegate extends BaseActionLayoutDelegate {
   final List<int> flexes = [];
-  FlexLayout({
+  FlexLayoutDelegate({
     required super.motion,
     required super.position,
     super.expander,
@@ -230,7 +220,7 @@ class FlexLayout extends BaseActionLayout {
     required Axis axis,
   }) {
     assert(!size.isEmpty && childCount > 0);
-
+    flexes.clear();
     RenderBox? current = child;
 
     while (current != null) {
@@ -298,24 +288,12 @@ class FlexLayout extends BaseActionLayout {
       }
     }
 
-    if (expander?.index != null) {
-      final index = expander!.index!;
-      final indexConstraints = constraints[index];
-      switch (axis) {
-        case Axis.horizontal:
-          constraints[index] = BoxConstraints.tightFor(
-            width: indexConstraints.maxWidth + remainWidth,
-            height: indexConstraints.maxHeight,
-          );
-          break;
-        case Axis.vertical:
-          constraints[index] = BoxConstraints.tightFor(
-            width: indexConstraints.maxWidth,
-            height: indexConstraints.maxHeight + remainHeight,
-          );
-          break;
-      }
-    }
+    _fillRemainSpace(
+      constraints,
+      axis: axis,
+      remainHeight: remainHeight,
+      remainWidth: remainWidth,
+    );
 
     return SizedConstraints(
       size: size,
@@ -323,33 +301,6 @@ class FlexLayout extends BaseActionLayout {
       constraints: constraints,
     );
   }
-
-  // Offset _previousShift = Offset.zero;
-
-  // @override
-  // Offset getRelativeOffset({
-  //   required SizedConstraints sizedConstraints,
-  //   required int index,
-  //   required double ratio,
-  // }) {
-  //   assert(ratio >= 0 && ratio <= 1);
-  //   final shift = _previousShift;
-
-  //   switch (motion) {
-  //     case ActionMotion.stretch || ActionMotion.drawer:
-  //       _previousShift +=
-  //           sizedConstraints.getShiftFromConstraints(index) * ratio;
-  //       break;
-  //     case ActionMotion.behind || ActionMotion.scroll:
-  //       _previousShift += sizedConstraints.getShiftFromConstraints(index);
-  //       break;
-  //   }
-
-  //   return shift +
-  //       (motion == ActionMotion.scroll
-  //           ? sizedConstraints.totalShift * (ratio - 1)
-  //           : Offset.zero);
-  // }
 }
 
 enum ActionMotion {
@@ -359,6 +310,9 @@ enum ActionMotion {
   scroll,
 }
 
+/// [spaceEvenly] layout is the default layout of [SlideActionPanel],
+/// and all action items would be laid out evenly in the [SlideActionPanel]
+/// [flex] layout is similar to the [spaceEvenly] layout, but the action items would be laid out according to their flex values
 enum ActionAlignment {
   spaceEvenly,
   flex,
@@ -366,6 +320,9 @@ enum ActionAlignment {
 
 class ActionLayout {
   final ActionMotion motion;
+
+  /// when using [ActionLayout.flex], the [SlideActionPanel.actions] would have a default flex value of 1,
+  /// if the item widget is not wrapped by [ActionItem]
   final ActionAlignment alignment;
 
   const ActionLayout({
@@ -373,19 +330,19 @@ class ActionLayout {
     required this.alignment,
   });
 
-  BaseActionLayout buildDelegate(
+  BaseActionLayoutDelegate buildDelegate(
     ActionPosition position, {
     ActionItemExpander? expander,
   }) {
     switch (alignment) {
       case ActionAlignment.spaceEvenly:
-        return SpaceEvenlyLayout(
+        return SpaceEvenlyLayoutDelegate(
           motion: motion,
           position: position,
           expander: expander,
         );
       case ActionAlignment.flex:
-        return FlexLayout(
+        return FlexLayoutDelegate(
           motion: motion,
           position: position,
           expander: expander,

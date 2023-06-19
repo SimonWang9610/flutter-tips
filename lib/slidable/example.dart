@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/slidable/action_motion.dart';
+import 'package:flutter_tips/slidable/action_layout_delegate.dart';
 import 'package:flutter_tips/slidable/models.dart';
-import 'package:flutter_tips/slidable/render.dart';
+import 'package:flutter_tips/slidable/slidable_render.dart';
 import 'package:flutter_tips/slidable/slide_action_panel.dart';
-import 'package:flutter_tips/slidable/widget.dart';
+import 'package:flutter_tips/slidable/slidable_panel.dart';
 
 import 'package:flutter_slidable/flutter_slidable.dart';
 
@@ -22,7 +22,7 @@ class _SlidableExampleState extends State<SlidableExample> {
       preActionPanelBuilder: (_, percent, expander) {
         return SlideActionPanel(
           slidePercent: percent,
-          actionLayout: ActionLayout.flex(ActionMotion.drawer),
+          actionLayout: ActionLayout.spaceEvenly(ActionMotion.behind),
           expander: expander,
           actions: [
             ActionItem(
@@ -53,27 +53,27 @@ class _SlidableExampleState extends State<SlidableExample> {
                 ),
               ),
             ),
-            ActionItem(
-              flex: 1,
-              child: InkWell(
-                onTap: () {
-                  expander?.expand(2);
-                },
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: Colors.yellow),
-                  child: Center(
-                    child: Text("Delete"),
-                  ),
-                ),
-              ),
-            ),
+            // ActionItem(
+            //   flex: 1,
+            //   child: InkWell(
+            //     onTap: () {
+            //       expander?.expand(2);
+            //     },
+            //     child: DecoratedBox(
+            //       decoration: BoxDecoration(color: Colors.yellow),
+            //       child: Center(
+            //         child: Text("Delete"),
+            //       ),
+            //     ),
+            //   ),
+            // ),
           ],
         );
       },
       postActionPanelBuilder: (_, percent, expander) {
         return SlideActionPanel(
           slidePercent: percent,
-          actionLayout: ActionLayout.spaceEvenly(),
+          actionLayout: ActionLayout.spaceEvenly(ActionMotion.behind),
           expander: expander,
           actions: const [
             ActionItem(
