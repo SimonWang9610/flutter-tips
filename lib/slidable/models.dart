@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_tips/slidable/action_motion.dart';
 
 enum SlideDirection {
   idle,
@@ -96,24 +97,27 @@ extension ValidateRect on Rect {
 
 class LayoutSize {
   final Size size;
-  final int preActionCount;
-  final int postActionCount;
+  final bool hasPreAction;
+  final bool hasPostAction;
 
   const LayoutSize({
     required this.size,
-    required this.preActionCount,
-    required this.postActionCount,
+    required this.hasPreAction,
+    required this.hasPostAction,
   });
 
   /// if no action, return null
   /// by doing so, we could disable sliding if no actions along the [axis]
-  double? getRatio(Axis axis, double dragExtent) {
-    if ((dragExtent > 0 && preActionCount == 0) ||
-        (dragExtent < 0 && postActionCount == 0)) {
+  double? getRatio(Axis axis, double dragExtent,
+      {double maxSlideThreshold = 1.0}) {
+    if ((dragExtent > 0 && !hasPreAction) ||
+        (dragExtent < 0 && !hasPostAction)) {
       return null;
     }
 
-    final mainAxis = axis == Axis.horizontal ? size.width : size.height;
+    final mainAxis = axis == Axis.horizontal
+        ? size.width * maxSlideThreshold
+        : size.height * maxSlideThreshold;
     final ratio = dragExtent / mainAxis;
     return ratio;
   }
@@ -122,9 +126,9 @@ class LayoutSize {
   /// [ratio] < 0  indicates we are sliding to see the post actions
   double getToggleTarget(
       SlideDirection direction, double ratio, bool isForward) {
-    if (ratio >= 0 && preActionCount == 0) {
+    if (ratio >= 0 && !hasPreAction) {
       return 0;
-    } else if (ratio <= 0 && postActionCount == 0) {
+    } else if (ratio <= 0 && !hasPostAction) {
       return 0;
     }
 
@@ -139,8 +143,11 @@ class LayoutSize {
     };
   }
 
-  double getDragExtent(Axis axis, double ratio) {
-    final mainAxis = axis == Axis.horizontal ? size.width : size.height;
+  double getDragExtent(Axis axis, double ratio,
+      {double maxSlideThreshold = 1.0}) {
+    final mainAxis = axis == Axis.horizontal
+        ? size.width * maxSlideThreshold
+        : size.height * maxSlideThreshold;
     return mainAxis * ratio;
   }
 }

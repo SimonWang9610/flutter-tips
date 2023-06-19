@@ -2,76 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tips/slidable/render.dart';
 import 'controller.dart';
 
-class _SlideAction extends ParentDataWidget<SlideActionBoxData> {
-  final bool isActionPanel;
-  const _SlideAction({
-    super.key,
-    this.isActionPanel = true,
-    required super.child,
-  });
-
-  @override
-  void applyParentData(RenderObject renderObject) {
-    assert(renderObject.parentData is SlideActionBoxData);
-    final parentData = renderObject.parentData as SlideActionBoxData;
-    if (parentData.isActionPanel != isActionPanel) {
-      parentData.isActionPanel = isActionPanel;
-      final targetParent = renderObject.parent;
-      if (targetParent is RenderObject) {
-        targetParent.markNeedsLayout();
-      }
-    }
-  }
-
-  @override
-  Type get debugTypicalAncestorWidgetClass => _SlidablePanel;
-}
+import 'slide_action_panel.dart';
 
 class _SlidablePanel extends MultiChildRenderObjectWidget {
   final SlideController controller;
-  final SlideActionLayoutDelegate layoutDelegate;
   const _SlidablePanel({
     required this.controller,
-    required this.layoutDelegate,
     required super.children,
     super.key,
   });
 
   @override
   RenderObject createRenderObject(BuildContext context) {
-    return RenderSlidable(
-      controller: controller,
-      layoutDelegate: layoutDelegate,
-    );
+    return RenderSlidable(controller: controller);
   }
 
   @override
   void updateRenderObject(
       BuildContext context, covariant RenderSlidable renderObject) {
-    renderObject
-      ..layoutDelegate = layoutDelegate
-      ..controller = controller;
+    renderObject.controller = controller;
   }
 }
 
 typedef SlideEndCallback = void Function(SlideController, bool);
+typedef SlideActionPanelBuilder = SlideActionPanel Function(
+    BuildContext, double);
 
 class SlidablePanel extends StatefulWidget {
-  final double threshold;
+  final double maxSlideThreshold;
   final Widget child;
   final Axis axis;
-  final SlideEndCallback? onSlideEnd;
-  final List<Widget> preActions;
-  final List<Widget> postActions;
+  final SlideActionPanelBuilder? preActionPanelBuilder;
+  final SlideActionPanelBuilder? postActionPanelBuilder;
 
   const SlidablePanel({
     super.key,
     required this.child,
-    this.threshold = 0.4,
+    this.maxSlideThreshold = 0.6,
     this.axis = Axis.horizontal,
-    this.preActions = const [],
-    this.postActions = const [],
-    this.onSlideEnd,
+    this.preActionPanelBuilder,
+    this.postActionPanelBuilder,
   });
 
   @override
@@ -86,13 +56,11 @@ class SlidablePanel extends StatefulWidget {
 class _SlidablePanelState extends State<SlidablePanel> {
   late final SlideController _slideController;
 
-  final SlideActionLayoutDelegate _layoutDelegate = SlideActionLayoutDelegate();
-
   @override
   void initState() {
     super.initState();
     _slideController = SlideController(
-      visibleThreshold: widget.threshold,
+      maxSlideThreshold: widget.maxSlideThreshold,
       axis: widget.axis,
     );
   }
@@ -101,8 +69,8 @@ class _SlidablePanelState extends State<SlidablePanel> {
   void didUpdateWidget(covariant SlidablePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.threshold != widget.threshold) {
-      _slideController.visibleThreshold = widget.threshold;
+    if (oldWidget.maxSlideThreshold != widget.maxSlideThreshold) {
+      _slideController.maxSlideThreshold = widget.maxSlideThreshold;
     }
 
     if (oldWidget.axis != widget.axis) {
@@ -116,12 +84,37 @@ class _SlidablePanelState extends State<SlidablePanel> {
     super.dispose();
   }
 
+  bool get _hasPreActionPanel => widget.preActionPanelBuilder != null;
+  bool get _hasPostActionPanel => widget.postActionPanelBuilder != null;
+
   @override
   Widget build(BuildContext context) {
-    final preActions = widget.preActions.map((e) => _SlideAction(child: e));
-    final postActions = widget.postActions.map((e) => _SlideAction(child: e));
+    final preActionPanel = _hasPreActionPanel
+        ? ValueListenableBuilder(
+            valueListenable: _slideController.animationValue,
+            builder: (BuildContext context, percent, _) =>
+                widget.preActionPanelBuilder!.call(
+              context,
+              percent >= 0 ? percent : 0.0,
+            ),
+          )
+        : null;
+
+    final postActionPanel = _hasPostActionPanel
+        ? ValueListenableBuilder(
+            valueListenable: _slideController.animationValue,
+            builder: (BuildContext context, percent, _) =>
+                widget.postActionPanelBuilder!.call(
+              context,
+              percent <= 0 ? percent.abs() : 0.0,
+            ),
+          )
+        : null;
 
     return GestureDetector(
+      onHorizontalDragStart: (details) {
+        print("onHorizontalDragStart: $_dragExtent");
+      },
       onHorizontalDragUpdate:
           _slideController.axis == Axis.horizontal ? _onDragUpdate : null,
       onVerticalDragUpdate:
@@ -130,11 +123,10 @@ class _SlidablePanelState extends State<SlidablePanel> {
       onVerticalDragEnd: _onDragEnd,
       child: _SlidablePanel(
         controller: _slideController,
-        layoutDelegate: _layoutDelegate,
         children: [
-          ...preActions,
+          if (preActionPanel != null) preActionPanel,
           widget.child,
-          ...postActions,
+          if (postActionPanel != null) postActionPanel,
         ],
       ),
     );

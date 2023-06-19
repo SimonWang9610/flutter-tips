@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'models.dart';
@@ -10,11 +11,11 @@ class SlideController extends TickerProvider
     with ChangeNotifier, SlideControllerAnimationMixin {
   SlideController({
     Axis axis = Axis.horizontal,
-    double visibleThreshold = 0.5,
+    double maxSlideThreshold = 0.5,
     Duration? duration,
     Duration? reverseDuration,
   })  : _axis = axis,
-        _visibleThreshold = visibleThreshold {
+        _maxSlideThreshold = maxSlideThreshold {
     _animationController.addListener(() {
       notifyListeners();
     });
@@ -46,11 +47,11 @@ class SlideController extends TickerProvider
     }
   }
 
-  double _visibleThreshold;
-  double get visibleThreshold => _visibleThreshold;
-  set visibleThreshold(double visibleThreshold) {
-    if (_visibleThreshold != visibleThreshold) {
-      _visibleThreshold = visibleThreshold;
+  double _maxSlideThreshold;
+  double get maxSlideThreshold => _maxSlideThreshold;
+  set maxSlideThreshold(double maxSlideThreshold) {
+    if (_maxSlideThreshold != maxSlideThreshold) {
+      _maxSlideThreshold = maxSlideThreshold;
       notifyListeners();
     }
   }
@@ -58,7 +59,11 @@ class SlideController extends TickerProvider
   void slideTo(double value) {
     assert(layoutSize != null);
     final newRatio = layoutSize!
-        .getRatio(axis, value)
+        .getRatio(
+          axis,
+          value,
+          maxSlideThreshold: maxSlideThreshold,
+        )
         ?.clamp(_lowerBound, _upperBound)
         .toDouble();
 
@@ -81,7 +86,11 @@ class SlideController extends TickerProvider
     if (ratio != target) {
       return _animationController
           .animateTo(target, curve: curve, duration: duration)
-          .then((_) => layoutSize!.getDragExtent(axis, ratio));
+          .then((_) => layoutSize!.getDragExtent(
+                axis,
+                ratio,
+                maxSlideThreshold: maxSlideThreshold,
+              ));
     }
     return Future.value();
   }
@@ -92,6 +101,8 @@ class SlideController extends TickerProvider
   /// if [ratio] == 0 indicates we are not sliding, all actions are hidden, only the main child is visible
   double get ratio => _animationController.value;
   double get absoluteRatio => ratio.abs();
+
+  Animation<double> get animationValue => _animationController;
 
   SlideDirection get direction {
     if (ratio == 0) {
