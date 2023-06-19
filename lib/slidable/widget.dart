@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tips/slidable/action_item_render.dart';
 import 'package:flutter_tips/slidable/render.dart';
 import 'controller.dart';
 
@@ -26,7 +27,7 @@ class _SlidablePanel extends MultiChildRenderObjectWidget {
 
 typedef SlideEndCallback = void Function(SlideController, bool);
 typedef SlideActionPanelBuilder = SlideActionPanel Function(
-    BuildContext, double);
+    BuildContext, double, ActionItemExpander?);
 
 class SlidablePanel extends StatefulWidget {
   final double maxSlideThreshold;
@@ -56,6 +57,9 @@ class SlidablePanel extends StatefulWidget {
 class _SlidablePanelState extends State<SlidablePanel> {
   late final SlideController _slideController;
 
+  final ActionItemExpander _preActionsExpander = ActionItemExpander();
+  final ActionItemExpander _postActionsExpander = ActionItemExpander();
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +85,8 @@ class _SlidablePanelState extends State<SlidablePanel> {
   @override
   void dispose() {
     _slideController.dispose();
+    _preActionsExpander.dispose();
+    _postActionsExpander.dispose();
     super.dispose();
   }
 
@@ -96,6 +102,7 @@ class _SlidablePanelState extends State<SlidablePanel> {
                 widget.preActionPanelBuilder!.call(
               context,
               percent >= 0 ? percent : 0.0,
+              _preActionsExpander,
             ),
           )
         : null;
@@ -107,6 +114,7 @@ class _SlidablePanelState extends State<SlidablePanel> {
                 widget.postActionPanelBuilder!.call(
               context,
               percent <= 0 ? percent.abs() : 0.0,
+              _postActionsExpander,
             ),
           )
         : null;
@@ -149,6 +157,9 @@ class _SlidablePanelState extends State<SlidablePanel> {
     final dragExtent = await _slideController.toggle(
       isForward: _isForward,
     );
+
+    _preActionsExpander.reset();
+    _postActionsExpander.reset();
 
     _dragExtent = dragExtent ?? 0;
 

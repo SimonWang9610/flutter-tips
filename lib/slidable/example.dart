@@ -19,38 +19,62 @@ class _SlidableExampleState extends State<SlidableExample> {
   Widget build(BuildContext context) {
     return SlidablePanel(
       axis: Axis.horizontal,
-      preActionPanelBuilder: (_, percent) {
+      preActionPanelBuilder: (_, percent, expander) {
         return SlideActionPanel(
           slidePercent: percent,
-          actionLayout: ActionLayout.spaceEvenly(),
+          actionLayout: ActionLayout.flex(ActionMotion.drawer),
+          expander: expander,
           actions: [
             ActionItem(
               flex: 2,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: Colors.green),
-                child: Center(
-                  child: Text("Delete"),
+              child: InkWell(
+                onTap: () {
+                  expander?.expand(0);
+                },
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: Colors.green),
+                  child: Center(
+                    child: Text("Delete"),
+                  ),
                 ),
               ),
             ),
             ActionItem(
-              flex: 2,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.red,
+              flex: 1,
+              child: InkWell(
+                onTap: () {
+                  expander?.expand(1);
+                },
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: Colors.red),
+                  child: Center(
+                    child: Text("Delete"),
+                  ),
                 ),
-                child: Center(
-                  child: Text("Add"),
+              ),
+            ),
+            ActionItem(
+              flex: 1,
+              child: InkWell(
+                onTap: () {
+                  expander?.expand(2);
+                },
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: Colors.yellow),
+                  child: Center(
+                    child: Text("Delete"),
+                  ),
                 ),
               ),
             ),
           ],
         );
       },
-      postActionPanelBuilder: (_, percent) {
+      postActionPanelBuilder: (_, percent, expander) {
         return SlideActionPanel(
           slidePercent: percent,
           actionLayout: ActionLayout.spaceEvenly(),
+          expander: expander,
           actions: const [
             ActionItem(
               flex: 2,

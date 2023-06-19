@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_tips/slidable/action_item_render.dart';
 import 'package:flutter_tips/slidable/action_motion.dart';
 import 'package:flutter_tips/slidable/render.dart';
 
@@ -14,10 +14,25 @@ class RenderSlideAction extends RenderBox
   RenderSlideAction({
     List<RenderBox>? children,
     required ActionLayout actionLayout,
+    ActionItemExpander? expander,
     double slidePercent = 0.0,
   })  : _actionLayout = actionLayout,
         _slidePercent = slidePercent {
     addAll(children);
+  }
+
+  ActionItemExpander? _expander;
+  ActionItemExpander? get expander => _expander;
+  set expander(ActionItemExpander? value) {
+    if (_expander != value) {
+      final old = _expander;
+      _expander = value;
+
+      if (attached) {
+        old?.removeListener(_markNeedsLayoutIfNeeded);
+        value?.addListener(_markNeedsLayoutIfNeeded);
+      }
+    }
   }
 
   double _slidePercent;
@@ -34,6 +49,24 @@ class RenderSlideAction extends RenderBox
   set actionLayout(ActionLayout value) {
     if (_actionLayout != value) {
       _actionLayout = value;
+      markNeedsLayout();
+    }
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _expander?.addListener(_markNeedsLayoutIfNeeded);
+  }
+
+  @override
+  void detach() {
+    _expander?.removeListener(_markNeedsLayoutIfNeeded);
+    super.detach();
+  }
+
+  void _markNeedsLayoutIfNeeded() {
+    if (_expander != null && _expander!.index != null) {
       markNeedsLayout();
     }
   }
@@ -65,7 +98,10 @@ class RenderSlideAction extends RenderBox
       return;
     }
 
-    final layoutDelegate = _actionLayout.buildDelegate(position);
+    final layoutDelegate = _actionLayout.buildDelegate(
+      position,
+      expander: expander,
+    );
 
     layoutDelegate.layout(
       firstChild!,

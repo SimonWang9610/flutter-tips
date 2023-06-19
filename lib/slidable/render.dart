@@ -59,6 +59,8 @@ class RenderSlidable extends RenderBox
   void performLayout() {
     assert(childCount <= 3);
 
+    print("layout RenderSlidable");
+
     final computedSize = _layoutMainChild();
 
     RenderBox? child = firstChild;

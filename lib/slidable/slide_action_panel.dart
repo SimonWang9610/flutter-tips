@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_tips/slidable/action_item_render.dart';
 import 'package:flutter_tips/slidable/action_motion.dart';
 import 'package:flutter_tips/slidable/action_render.dart';
 
@@ -33,12 +34,14 @@ class SlideActionPanel<T extends Widget> extends MultiChildRenderObjectWidget {
   final ActionLayout actionLayout;
   final double slidePercent;
   final List<T> actions;
+  final ActionItemExpander? expander;
 
   const SlideActionPanel({
     Key? key,
     required this.actionLayout,
     required this.actions,
     this.slidePercent = 0.0,
+    this.expander,
   }) : super(
           key: key,
           children: actions,
@@ -49,6 +52,7 @@ class SlideActionPanel<T extends Widget> extends MultiChildRenderObjectWidget {
     return RenderSlideAction(
       actionLayout: actionLayout,
       slidePercent: slidePercent,
+      expander: expander,
     );
   }
 
@@ -57,6 +61,7 @@ class SlideActionPanel<T extends Widget> extends MultiChildRenderObjectWidget {
       BuildContext context, covariant RenderSlideAction renderObject) {
     renderObject
       ..actionLayout = actionLayout
-      ..slidePercent = slidePercent;
+      ..slidePercent = slidePercent
+      ..expander = expander;
   }
 }
