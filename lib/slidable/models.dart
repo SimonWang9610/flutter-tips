@@ -13,21 +13,41 @@ enum ActionPosition {
   post,
 }
 
+enum ActionMotion {
+  behind,
+  stretch,
+  drawer,
+  scroll,
+}
+
+/// [spaceEvenly] layout is the default layout of [SlideActionPanel],
+/// and all action items would be laid out evenly in the [SlideActionPanel]
+/// [flex] layout is similar to the [spaceEvenly] layout, but the action items would be laid out according to their flex values
+enum ActionAlignment {
+  spaceEvenly,
+  flex,
+}
+
 class LayoutSize {
   final Size size;
   final bool hasPreAction;
   final bool hasPostAction;
+  final Axis axis;
+  final double maxSlideThreshold;
 
   const LayoutSize({
     required this.size,
     required this.hasPreAction,
     required this.hasPostAction,
+    required this.axis,
+    required this.maxSlideThreshold,
   });
 
   /// if no action, return null
   /// by doing so, we could disable sliding if no actions along the [axis]
-  double? getRatio(Axis axis, double dragExtent,
-      {double maxSlideThreshold = 1.0}) {
+  double? getRatio(
+    double dragExtent,
+  ) {
     if ((dragExtent > 0 && !hasPreAction) ||
         (dragExtent < 0 && !hasPostAction)) {
       return null;
@@ -61,8 +81,7 @@ class LayoutSize {
     };
   }
 
-  double getDragExtent(Axis axis, double ratio,
-      {double maxSlideThreshold = 1.0}) {
+  double getDragExtent(double ratio) {
     final mainAxis = axis == Axis.horizontal
         ? size.width * maxSlideThreshold
         : size.height * maxSlideThreshold;

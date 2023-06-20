@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-class ActionItemExpander extends TickerProvider with ChangeNotifier {
+final class ActionController extends TickerProvider with ChangeNotifier {
   late final AnimationController _animationController = AnimationController(
     vsync: this,
   );
 
-  ActionItemExpander({
+  ActionController({
     int? index,
   }) : _index = index {
     _animationController.addListener(() {
@@ -18,16 +18,45 @@ class ActionItemExpander extends TickerProvider with ChangeNotifier {
   int? get index => _index;
   double? get progress => _animationController.value;
 
-  void expand(
+  Future<void> expand(
     int index, {
     Curve curve = Curves.easeInOut,
     Duration duration = const Duration(milliseconds: 300),
-  }) {
+  }) async {
     if (_index != index) {
       _index = index;
-      _animationController.duration = duration;
       _animationController.reset();
-      _animationController.forward();
+      // await _animationController.animateTo(1, curve: curve, duration: duration);
+      await _animationController.fling(velocity: 1);
+    }
+  }
+
+  Future<void> collapse(
+    int index, {
+    Curve curve = Curves.easeInOut,
+    Duration duration = const Duration(milliseconds: 300),
+  }) async {
+    if (_index == index) {
+      // await _animationController.animateBack(
+      //   0,
+      //   curve: curve,
+      //   duration: duration,
+      // );
+      await _animationController.fling(velocity: -1);
+
+      _index = null;
+    }
+  }
+
+  Future<void> toggle(
+    int index, {
+    Curve curve = Curves.easeInOut,
+    Duration duration = const Duration(milliseconds: 300),
+  }) async {
+    if (_index == index) {
+      await collapse(index, curve: curve, duration: duration);
+    } else {
+      await expand(index, curve: curve, duration: duration);
     }
   }
 

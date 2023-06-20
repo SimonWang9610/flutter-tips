@@ -6,11 +6,11 @@ import 'package:flutter_tips/slidable/models.dart';
 abstract class BaseActionLayoutDelegate {
   final ActionPosition position;
   final ActionMotion motion;
-  final ActionItemExpander? expander;
+  final ActionController? controller;
   BaseActionLayoutDelegate({
     required this.position,
     required this.motion,
-    this.expander,
+    this.controller,
   });
 
   void layout(
@@ -46,9 +46,9 @@ abstract class BaseActionLayoutDelegate {
     }
   }
 
-  /// If [expander] is not null, the [expander]'s index would be expanded to occupy the total space of the [SlideActionPanel]
-  /// however, the [ActionItemExpander.index] may not occupy the total space after expanded
-  /// therefore, we should add the remained space to the [ActionItemExpander.index] before expanding it
+  /// If [controller] is not null, the [controller]'s index would be expanded to occupy the total space of the [SlideActionPanel]
+  /// however, the [ActionItemcontroller.index] may not occupy the total space after expanded
+  /// therefore, we should add the remained space to the [ActionItemcontroller.index] before expanding it
   /// currently, all action items are laid out using a tight [BoxConstraints]
   SizedConstraints getSizedConstraints({
     required Size size,
@@ -95,12 +95,12 @@ abstract class BaseActionLayoutDelegate {
             : Offset.zero);
   }
 
-  /// if [expander] is not null, the [expander]'s index would be expanded to occupy the total space of the [SlideActionPanel]
-  /// the other action items would be compressed to empty during animation of the [expander]
-  /// if [expander] is null, all action items would have the same ratio and be laid out normally
-  (double, double) get _itemExpanderRatios {
-    final unExpandedRatio = 1 - (expander?.progress ?? 0.0);
-    final expandedRatio = 1 + (expander?.progress ?? 0.0);
+  /// if [controller] is not null, the [controller]'s index would be expanded to occupy the total space of the [SlideActionPanel]
+  /// the other action items would be compressed to empty during animation of the [controller]
+  /// if [controller] is null, all action items would have the same ratio and be laid out normally
+  (double, double) get _itemControllerRatios {
+    final unExpandedRatio = 1 - (controller?.progress ?? 0.0);
+    final expandedRatio = 1 + (controller?.progress ?? 0.0);
 
     return (expandedRatio, unExpandedRatio);
   }
@@ -111,18 +111,18 @@ abstract class BaseActionLayoutDelegate {
     double remainWidth = 0.0,
     double remainHeight = 0.0,
   }) {
-    if (expander?.index != null) {
-      final indexConstraints = constraints[expander!.index!];
+    if (controller?.index != null) {
+      final indexConstraints = constraints[controller!.index!];
 
       switch (axis) {
         case Axis.horizontal:
-          constraints[expander!.index!] = BoxConstraints.tightFor(
+          constraints[controller!.index!] = BoxConstraints.tightFor(
             width: indexConstraints.maxWidth + remainWidth,
             height: indexConstraints.maxHeight,
           );
           break;
         case Axis.vertical:
-          constraints[expander!.index!] = BoxConstraints.tightFor(
+          constraints[controller!.index!] = BoxConstraints.tightFor(
             width: indexConstraints.maxWidth,
             height: indexConstraints.maxHeight + remainHeight,
           );
@@ -136,12 +136,12 @@ class SpaceEvenlyLayoutDelegate extends BaseActionLayoutDelegate {
   SpaceEvenlyLayoutDelegate({
     required super.motion,
     required super.position,
-    super.expander,
+    super.controller,
   });
 
-  /// If [expander] is not null, the [expander]'s index would be expanded to occupy the total space of the [SlideActionPanel]
-  /// however, the [ActionItemExpander.index] may not occupy the total space after expanded
-  /// therefore, we should add the remained space to the [ActionItemExpander.index] before expanding it
+  /// If [controller] is not null, the [controller]'s index would be expanded to occupy the total space of the [SlideActionPanel]
+  /// however, the [ActionItemcontroller.index] may not occupy the total space after expanded
+  /// therefore, we should add the remained space to the [ActionItemcontroller.index] before expanding it
   /// currently, all action items are laid out using a tight [BoxConstraints]
   @override
   SizedConstraints getSizedConstraints({
@@ -154,7 +154,7 @@ class SpaceEvenlyLayoutDelegate extends BaseActionLayoutDelegate {
     final averageWidth = size.width / childCount;
     final averageHeight = size.height / childCount;
 
-    final (expandedRatio, unExpandedRatio) = _itemExpanderRatios;
+    final (expandedRatio, unExpandedRatio) = _itemControllerRatios;
 
     final constraints = <BoxConstraints>[];
 
@@ -162,7 +162,7 @@ class SpaceEvenlyLayoutDelegate extends BaseActionLayoutDelegate {
     double remainHeight = size.height;
 
     for (int i = 0; i < childCount; i++) {
-      final indexExpanded = expander?.index == i;
+      final indexExpanded = controller?.index == i;
 
       switch (axis) {
         case Axis.horizontal:
@@ -208,7 +208,7 @@ class FlexLayoutDelegate extends BaseActionLayoutDelegate {
   FlexLayoutDelegate({
     required super.motion,
     required super.position,
-    super.expander,
+    super.controller,
   });
 
   @override
@@ -254,14 +254,14 @@ class FlexLayoutDelegate extends BaseActionLayoutDelegate {
     final heightForEachFlex = size.height / totalFlex;
 
     final constraints = <BoxConstraints>[];
-    final (expandedRatio, unExpandedRatio) = _itemExpanderRatios;
+    final (expandedRatio, unExpandedRatio) = _itemControllerRatios;
 
     double remainWidth = size.width;
     double remainHeight = size.height;
 
     for (int i = 0; i < childCount; i++) {
       final flex = flexes[i];
-      final indexExpanded = expander?.index == i;
+      final indexExpanded = controller?.index == i;
 
       switch (axis) {
         case Axis.horizontal:
@@ -303,21 +303,6 @@ class FlexLayoutDelegate extends BaseActionLayoutDelegate {
   }
 }
 
-enum ActionMotion {
-  behind,
-  stretch,
-  drawer,
-  scroll,
-}
-
-/// [spaceEvenly] layout is the default layout of [SlideActionPanel],
-/// and all action items would be laid out evenly in the [SlideActionPanel]
-/// [flex] layout is similar to the [spaceEvenly] layout, but the action items would be laid out according to their flex values
-enum ActionAlignment {
-  spaceEvenly,
-  flex,
-}
-
 class ActionLayout {
   final ActionMotion motion;
 
@@ -332,20 +317,20 @@ class ActionLayout {
 
   BaseActionLayoutDelegate buildDelegate(
     ActionPosition position, {
-    ActionItemExpander? expander,
+    ActionController? controller,
   }) {
     switch (alignment) {
       case ActionAlignment.spaceEvenly:
         return SpaceEvenlyLayoutDelegate(
           motion: motion,
           position: position,
-          expander: expander,
+          controller: controller,
         );
       case ActionAlignment.flex:
         return FlexLayoutDelegate(
           motion: motion,
           position: position,
-          expander: expander,
+          controller: controller,
         );
     }
   }

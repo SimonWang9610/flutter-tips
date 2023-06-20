@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/slidable/action_item_expander.dart';
 import 'package:flutter_tips/slidable/action_layout_delegate.dart';
@@ -42,16 +43,16 @@ class ActionItem extends ParentDataWidget<SlideActionBoxData> {
 /// if [actions] is empty, the [SlidablePanel] can still slide but no widget would be shown.
 class SlideActionPanel<T extends Widget> extends MultiChildRenderObjectWidget {
   final ActionLayout actionLayout;
-  final double slidePercent;
+  final ValueListenable<double> slidePercent;
   final List<T> actions;
-  final ActionItemExpander? expander;
+  final ActionController? controller;
 
   const SlideActionPanel({
     Key? key,
     required this.actionLayout,
     required this.actions,
-    this.slidePercent = 0.0,
-    this.expander,
+    required this.slidePercent,
+    this.controller,
   }) : super(
           key: key,
           children: actions,
@@ -62,7 +63,7 @@ class SlideActionPanel<T extends Widget> extends MultiChildRenderObjectWidget {
     return RenderSlideAction(
       actionLayout: actionLayout,
       slidePercent: slidePercent,
-      expander: expander,
+      controller: controller,
     );
   }
 
@@ -72,6 +73,6 @@ class SlideActionPanel<T extends Widget> extends MultiChildRenderObjectWidget {
     renderObject
       ..actionLayout = actionLayout
       ..slidePercent = slidePercent
-      ..expander = expander;
+      ..controller = controller;
   }
 }

@@ -1,71 +1,38 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_tips/slidable/action_item_expander.dart';
 import 'models.dart';
 
 const double _lowerBound = -1;
 const double _upperBound = 1;
 const double _middleBound = 0;
 
-class SlideController extends TickerProvider
-    with ChangeNotifier, SlideControllerAnimationMixin {
-  SlideController({
-    Axis axis = Axis.horizontal,
-    double maxSlideThreshold = 0.5,
-    Duration? duration,
-    Duration? reverseDuration,
-  })  : _axis = axis,
-        _maxSlideThreshold = maxSlideThreshold {
+class SlideController extends _SlideAnimator {
+  SlideController() {
     _animationController.addListener(() {
       notifyListeners();
     });
   }
 
-  @override
-  Ticker createTicker(TickerCallback onTick) => Ticker(onTick);
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  Axis _axis;
-  Axis get axis => _axis;
-  set axis(Axis axis) {
-    if (_axis != axis) {
-      _axis = axis;
-      notifyListeners();
-    }
-  }
-
   LayoutSize? _layoutSize;
   LayoutSize? get layoutSize => _layoutSize;
+
+  @protected
   set layoutSize(LayoutSize? layoutSize) {
     if (_layoutSize != layoutSize) {
       _layoutSize = layoutSize;
     }
   }
 
-  double _maxSlideThreshold;
-  double get maxSlideThreshold => _maxSlideThreshold;
-  set maxSlideThreshold(double maxSlideThreshold) {
-    if (_maxSlideThreshold != maxSlideThreshold) {
-      _maxSlideThreshold = maxSlideThreshold;
-      notifyListeners();
-    }
-  }
-
+  /// [value] is the dragging extent during sliding
+  /// a positive value means the panel is sliding to show the pre actions
+  /// a negative value means the panel is sliding to show the post actions
+  @protected
   void slideTo(double value) {
     assert(layoutSize != null);
-    final newRatio = layoutSize!
-        .getRatio(
-          axis,
-          value,
-          maxSlideThreshold: maxSlideThreshold,
-        )
-        ?.clamp(_lowerBound, _upperBound)
-        .toDouble();
+    final newRatio =
+        layoutSize!.getRatio(value)?.clamp(_lowerBound, _upperBound).toDouble();
 
     if (newRatio != null && newRatio != ratio) {
       _animationValue = newRatio;
@@ -75,47 +42,69 @@ class SlideController extends TickerProvider
   /// animate to the nearest target determined by [isForward] and the current [SlideDirection]
   /// if [isForward] is true, it will animate to the next target
   /// if [isForward] is false, it will always restore to the [_middleBound], hiding all actions
-
   Future<double?> toggle({
     required bool isForward,
-    Curve curve = Curves.easeInOut,
+    Curve curve = Curves.bounceInOut,
     Duration duration = const Duration(milliseconds: 300),
-  }) {
+  }) async {
     final target = layoutSize!.getToggleTarget(direction, ratio, isForward);
 
     if (ratio != target) {
-      return _animationController
-          .animateTo(target, curve: curve, duration: duration)
-          .then((_) => layoutSize!.getDragExtent(
-                axis,
-                ratio,
-                maxSlideThreshold: maxSlideThreshold,
-              ));
+      await _animationController.animateTo(
+        target,
+        curve: curve,
+        duration: duration,
+      );
     }
-    return Future.value();
+    return layoutSize!.getDragExtent(ratio);
   }
 
-  /// represents the current sliding ratio relative to the size of the [SlidePanel]
-  /// if [ratio] > 0  indicates we are sliding to see the pre actions
-  /// if [ratio] < 0  indicates we are sliding to see the post actions
-  /// if [ratio] == 0 indicates we are not sliding, all actions are hidden, only the main child is visible
-  double get ratio => _animationController.value;
-  double get absoluteRatio => ratio.abs();
+  // Simulation _simulate(double target, double velocity) {
+  //   final springDesc =
+  //       SpringDescription.withDampingRatio(mass: 1.0, stiffness: 500);
 
-  Animation<double> get animationValue => _animationController;
+  //   return ScrollSpringSimulation(springDesc, ratio, target, velocity);
+  // }
+
+  Future<void> dismiss({
+    Curve? curve,
+    Duration? duration,
+  }) async {
+    final springDesc =
+        SpringDescription.withDampingRatio(mass: 1.0, stiffness: 500);
+
+    final simulation =
+        ScrollSpringSimulation(springDesc, ratio, _middleBound, -1);
+
+    await _animationController.animateWith(simulation);
+
+    // if (duration != null) {
+    //   return _animationController.animateTo(
+    //     _middleBound,
+    //     curve: curve ?? Curves.easeInOut,
+    //     duration: duration,
+    //   );
+    // } else {
+    //   return _animationController.fling(
+    //     velocity: 1,
+    //   );
+    // }
+  }
 
   SlideDirection get direction {
+    assert(layoutSize != null);
+
     if (ratio == 0) {
       return SlideDirection.idle;
     }
 
     if (ratio > 0) {
-      return switch (axis) {
+      return switch (layoutSize!.axis) {
         Axis.horizontal => SlideDirection.leftToRight,
         Axis.vertical => SlideDirection.topToBottom,
       };
     } else {
-      return switch (axis) {
+      return switch (layoutSize!.axis) {
         Axis.horizontal => SlideDirection.rightToLeft,
         Axis.vertical => SlideDirection.bottomToTop,
       };
@@ -123,7 +112,10 @@ class SlideController extends TickerProvider
   }
 }
 
-mixin SlideControllerAnimationMixin on TickerProvider {
+class _SlideAnimator extends TickerProvider with ChangeNotifier {
+  @override
+  Ticker createTicker(TickerCallback onTick) => Ticker(onTick);
+
   late final AnimationController _animationController = AnimationController(
     vsync: this,
     lowerBound: _lowerBound,
@@ -132,5 +124,20 @@ mixin SlideControllerAnimationMixin on TickerProvider {
 
   set _animationValue(double value) {
     _animationController.value = value;
+  }
+
+  Animation<double> get animationValue => _animationController;
+
+  /// represents the current sliding ratio relative to the size of the [SlidePanel]
+  /// if [ratio] > 0  indicates we are sliding to see the pre actions
+  /// if [ratio] < 0  indicates we are sliding to see the post actions
+  /// if [ratio] == 0 indicates we are not sliding, all actions are hidden, only the main child is visible
+  double get ratio => _animationController.value;
+  double get absoluteRatio => ratio.abs();
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 }

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tips/slidable/action_item_expander.dart';
 import 'package:flutter_tips/slidable/action_layout_delegate.dart';
+import 'package:flutter_tips/slidable/controller.dart';
 import 'package:flutter_tips/slidable/models.dart';
-import 'package:flutter_tips/slidable/slidable_render.dart';
 import 'package:flutter_tips/slidable/slide_action_panel.dart';
 import 'package:flutter_tips/slidable/slidable_panel.dart';
-
-import 'package:flutter_slidable/flutter_slidable.dart';
 
 class SlidableExample extends StatefulWidget {
   const SlidableExample({super.key});
@@ -15,69 +14,49 @@ class SlidableExample extends StatefulWidget {
 }
 
 class _SlidableExampleState extends State<SlidableExample> {
+  final SlideController _slideController = SlideController();
+
+  final ActionController _preActionController = ActionController();
+  final ActionController _postActionController = ActionController();
+
+  @override
+  void dispose() {
+    _preActionController.dispose();
+    _postActionController.dispose();
+    _slideController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return SlidablePanel(
       axis: Axis.horizontal,
-      preActionPanelBuilder: (_, percent, expander) {
-        return SlideActionPanel(
-          slidePercent: percent,
-          actionLayout: ActionLayout.spaceEvenly(ActionMotion.behind),
-          expander: expander,
-          actions: [
-            ActionItem(
-              flex: 2,
-              child: InkWell(
-                onTap: () {
-                  expander?.expand(0);
-                },
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: Colors.green),
-                  child: Center(
-                    child: Text("Delete"),
-                  ),
+      controller: _slideController,
+      preActionPanel: SlideActionPanel(
+        slidePercent: _slideController.animationValue,
+        controller: _preActionController,
+        actionLayout: ActionLayout.spaceEvenly(ActionMotion.behind),
+        actions: [
+          ActionItem(
+            flex: 2,
+            child: InkWell(
+              onTap: () {
+                _preActionController.toggle(0);
+              },
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: Colors.green),
+                child: Center(
+                  child: Text("Delete"),
                 ),
               ),
             ),
-            ActionItem(
-              flex: 1,
-              child: InkWell(
-                onTap: () {
-                  expander?.expand(1);
-                },
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: Colors.red),
-                  child: Center(
-                    child: Text("Delete"),
-                  ),
-                ),
-              ),
-            ),
-            // ActionItem(
-            //   flex: 1,
-            //   child: InkWell(
-            //     onTap: () {
-            //       expander?.expand(2);
-            //     },
-            //     child: DecoratedBox(
-            //       decoration: BoxDecoration(color: Colors.yellow),
-            //       child: Center(
-            //         child: Text("Delete"),
-            //       ),
-            //     ),
-            //   ),
-            // ),
-          ],
-        );
-      },
-      postActionPanelBuilder: (_, percent, expander) {
-        return SlideActionPanel(
-          slidePercent: percent,
-          actionLayout: ActionLayout.spaceEvenly(ActionMotion.behind),
-          expander: expander,
-          actions: const [
-            ActionItem(
-              flex: 2,
+          ),
+          ActionItem(
+            flex: 1,
+            child: InkWell(
+              onTap: () {
+                _preActionController.toggle(1);
+              },
               child: DecoratedBox(
                 decoration: BoxDecoration(color: Colors.red),
                 child: Center(
@@ -85,17 +64,35 @@ class _SlidableExampleState extends State<SlidableExample> {
                 ),
               ),
             ),
-            DecoratedBox(
-              decoration: BoxDecoration(color: Colors.green),
+          ),
+        ],
+      ),
+      postActionPanel: SlideActionPanel(
+        slidePercent: _slideController.animationValue,
+        controller: _postActionController,
+        actionLayout: ActionLayout.spaceEvenly(ActionMotion.behind),
+        actions: const [
+          ActionItem(
+            flex: 2,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: Colors.red),
               child: Center(
-                child: Text("Add"),
+                child: Text("Delete"),
               ),
             ),
-          ],
-        );
-      },
+          ),
+          DecoratedBox(
+            decoration: BoxDecoration(color: Colors.green),
+            child: Center(
+              child: Text("Add"),
+            ),
+          ),
+        ],
+      ),
       child: InkWell(
-        onTap: () => print("Slidable"),
+        onTap: () {
+          _slideController.dismiss();
+        },
         child: const DecoratedBox(
           decoration: BoxDecoration(color: Colors.blue),
           child: SizedBox(

@@ -14,9 +14,31 @@ class RenderSlidable extends RenderBox
         RenderBoxContainerDefaultsMixin<RenderBox, SlidableBoxData> {
   RenderSlidable({
     required SlideController controller,
+    required Axis axis,
+    double maxSlideThreshold = 0.5,
     List<RenderBox>? children,
-  }) : _controller = controller {
+  })  : _controller = controller,
+        _axis = axis,
+        _maxSlideThreshold = maxSlideThreshold {
     addAll(children);
+  }
+
+  Axis _axis;
+  Axis get axis => _axis;
+  set axis(Axis axis) {
+    if (_axis != axis) {
+      _axis = axis;
+      markNeedsLayout();
+    }
+  }
+
+  double _maxSlideThreshold;
+  double get maxSlideThreshold => _maxSlideThreshold;
+  set maxSlideThreshold(double maxSlideThreshold) {
+    if (_maxSlideThreshold != maxSlideThreshold) {
+      _maxSlideThreshold = maxSlideThreshold;
+      markNeedsLayout();
+    }
   }
 
   SlideController _controller;
@@ -75,8 +97,7 @@ class RenderSlidable extends RenderBox
 
         childParentData.offset = switch (childParentData.position!) {
           ActionPosition.pre => Offset.zero,
-          ActionPosition.post =>
-            computedSize.getTopLeftForPostAction(controller.axis),
+          ActionPosition.post => computedSize.getTopLeftForPostAction(axis),
         };
       }
 
@@ -84,7 +105,7 @@ class RenderSlidable extends RenderBox
     }
 
     size = computedSize.size;
-    controller.layoutSize = computedSize.layoutSize;
+    controller.layoutSize = computedSize.getLayoutSize(axis, maxSlideThreshold);
   }
 
   @override
@@ -131,10 +152,10 @@ class RenderSlidable extends RenderBox
 
     final mainChildSize = ChildLayoutHelper.layoutChild(mainChild, constraints);
 
-    final ratioForAction = controller.maxSlideThreshold;
+    final ratioForAction = maxSlideThreshold;
     final visibleRatio = controller.ratio * ratioForAction;
 
-    final offset = switch (controller.axis) {
+    final offset = switch (axis) {
       Axis.horizontal => Offset(mainChildSize.width * visibleRatio, 0),
       Axis.vertical => Offset(0, mainChildSize.height * visibleRatio),
     };
@@ -142,7 +163,7 @@ class RenderSlidable extends RenderBox
     final mainChildParentData = mainChild.parentData as BoxParentData;
     mainChildParentData.offset = offset;
 
-    final sizeForAction = switch (controller.axis) {
+    final sizeForAction = switch (axis) {
       Axis.horizontal =>
         Size(mainChildSize.width * ratioForAction, mainChildSize.height),
       Axis.vertical =>
@@ -227,10 +248,12 @@ class _ComputedSizes {
     };
   }
 
-  LayoutSize get layoutSize => LayoutSize(
+  LayoutSize getLayoutSize(Axis axis, double maxSlideThreshold) => LayoutSize(
         size: size,
         hasPreAction: hasPreAction,
         hasPostAction: hasPostAction,
+        maxSlideThreshold: maxSlideThreshold,
+        axis: axis,
       );
 
   @override

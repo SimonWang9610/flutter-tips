@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_tips/slidable/action_item_expander.dart';
 import 'package:flutter_tips/slidable/action_layout_delegate.dart';
+import 'package:flutter_tips/slidable/models.dart';
 import 'package:flutter_tips/slidable/slidable_render.dart';
 
 class SlideActionBoxData extends ContainerBoxParentData<RenderBox> {
@@ -14,33 +16,39 @@ class RenderSlideAction extends RenderBox
   RenderSlideAction({
     List<RenderBox>? children,
     required ActionLayout actionLayout,
-    ActionItemExpander? expander,
-    double slidePercent = 0.0,
+    required ValueListenable<double> slidePercent,
+    ActionController? controller,
   })  : _actionLayout = actionLayout,
-        _slidePercent = slidePercent {
+        _slidePercent = slidePercent,
+        _controller = controller {
     addAll(children);
   }
 
-  ActionItemExpander? _expander;
-  ActionItemExpander? get expander => _expander;
-  set expander(ActionItemExpander? value) {
-    if (_expander != value) {
-      final old = _expander;
-      _expander = value;
+  ActionController? _controller;
+  ActionController? get controller => _controller;
+  set controller(ActionController? value) {
+    if (_controller != value) {
+      final old = _controller;
+      _controller = value;
 
       if (attached) {
         old?.removeListener(_markNeedsLayoutIfNeeded);
-        value?.addListener(_markNeedsLayoutIfNeeded);
+        _controller?.addListener(_markNeedsLayoutIfNeeded);
       }
     }
   }
 
-  double _slidePercent;
-  double get slidePercent => _slidePercent;
-  set slidePercent(double value) {
+  ValueListenable<double> _slidePercent;
+  ValueListenable<double> get slidePercent => _slidePercent;
+  set slidePercent(ValueListenable<double> value) {
     if (_slidePercent != value) {
+      final old = _slidePercent;
       _slidePercent = value;
-      markNeedsLayout();
+
+      if (attached) {
+        old.removeListener(_markNeedsLayoutIfCorrectPosition);
+        value.addListener(_markNeedsLayoutIfCorrectPosition);
+      }
     }
   }
 
@@ -56,17 +64,31 @@ class RenderSlideAction extends RenderBox
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    _expander?.addListener(_markNeedsLayoutIfNeeded);
+    _controller?.addListener(_markNeedsLayoutIfNeeded);
+    _slidePercent.addListener(_markNeedsLayoutIfCorrectPosition);
   }
 
   @override
   void detach() {
-    _expander?.removeListener(_markNeedsLayoutIfNeeded);
+    _controller?.removeListener(_markNeedsLayoutIfNeeded);
+    _slidePercent.removeListener(_markNeedsLayoutIfCorrectPosition);
     super.detach();
   }
 
   void _markNeedsLayoutIfNeeded() {
-    if (_expander != null && _expander!.index != null) {
+    if (_controller != null && _controller!.index != null) {
+      markNeedsLayout();
+    }
+  }
+
+  void _markNeedsLayoutIfCorrectPosition() {
+    final position = (parentData as SlidableBoxData).position;
+
+    final shouldRelayout =
+        position == ActionPosition.pre && slidePercent.value >= 0 ||
+            position == ActionPosition.post && slidePercent.value <= 0;
+
+    if (shouldRelayout) {
       markNeedsLayout();
     }
   }
@@ -86,28 +108,26 @@ class RenderSlideAction extends RenderBox
     return constraints.biggest;
   }
 
+  // todo: report no valid action children
   @override
   void performLayout() {
     final child = firstChild;
     final position = (parentData as SlidableBoxData).position!;
 
     if (child == null || size.isEmpty) {
-      // if (child == null) {
-      //   _slidableRender.reportNoValidActions(position);
-      // }
       return;
     }
 
     final layoutDelegate = _actionLayout.buildDelegate(
       position,
-      expander: expander,
+      controller: controller,
     );
 
     layoutDelegate.layout(
       firstChild!,
       size,
       childCount,
-      ratio: slidePercent,
+      ratio: slidePercent.value.abs(),
       axis: _slideAxis,
     );
   }
@@ -115,7 +135,6 @@ class RenderSlideAction extends RenderBox
   @override
   void paint(PaintingContext context, Offset offset) {
     if (size.isEmpty) return;
-
     context.pushClipRect(
       needsCompositing,
       offset,
@@ -129,7 +148,7 @@ class RenderSlideAction extends RenderBox
     return defaultHitTestChildren(result, position: position);
   }
 
-  Axis get _slideAxis => _slidableRender.controller.axis;
+  Axis get _slideAxis => _slidableRender.axis;
 
   RenderSlidable get _slidableRender {
     RenderObject? parentNode = parent as RenderObject?;
