@@ -91,7 +91,7 @@ class _SlidableExampleState extends State<SlidableExample> {
       ),
       child: InkWell(
         onTap: () {
-          _slideController.dismiss();
+          _slideController.dismiss(onDismissed: _resetActionItem);
         },
         child: const DecoratedBox(
           decoration: BoxDecoration(color: Colors.blue),
@@ -105,5 +105,10 @@ class _SlidableExampleState extends State<SlidableExample> {
         ),
       ),
     );
+  }
+
+  void _resetActionItem() {
+    _preActionController.reset();
+    _postActionController.reset();
   }
 }

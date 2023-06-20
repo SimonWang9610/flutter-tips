@@ -38,18 +38,12 @@ class _SlidablePanel extends MultiChildRenderObjectWidget {
 /// [SlidablePanel] is a widget that can slide to show actions.
 /// [child] would be the main child of the panel.
 ///
-/// [preActionPanelBuilder] would be used to build the panel that contains actions before the main child.
-/// if [preActionPanelBuilder] is null, the panel cannot slide to show the pre actions.
-///
-/// [postActionPanelBuilder] would be used to build the panel that contains actions after the main child.
-/// if [postActionPanelBuilder] is null, the panel cannot slide to show the post actions.
-///
 /// [maxSlideThreshold] would be used to determine the max ratio of the panel that can slide, it should be in [0, 1]
 ///
 /// each [SlideActionPanel] would be sized by the size of [child] * [maxSlideThreshold],
 /// by doing so, the internal changes of [SlideActionPanel] would not affect the size of [child], for example,
 /// expanding the action item would not invoke [RenderSlidable.performLayout]
-class SlidablePanel extends StatefulWidget {
+class SlidablePanel extends StatelessWidget {
   final double maxSlideThreshold;
   final Widget child;
   final Axis axis;
@@ -68,64 +62,30 @@ class SlidablePanel extends StatefulWidget {
   });
 
   @override
-  State<SlidablePanel> createState() => _SlidablePanelState();
-
-  static SlideController? of(BuildContext context) {
-    final renderObject = context.findRenderObject() as RenderSlidable?;
-    return renderObject?.controller;
-  }
-}
-
-class _SlidablePanelState extends State<SlidablePanel> {
-  bool get _hasPreActionPanel => widget.preActionPanel != null;
-  bool get _hasPostActionPanel => widget.postActionPanel != null;
-
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // todo: fix bug: when dragging starts, it may not follow the pointer position and jump to another position
-      onHorizontalDragStart: (details) {
-        print("onHorizontalDragStart: $_dragExtent");
-      },
       onHorizontalDragUpdate:
-          widget.axis == Axis.horizontal ? _onDragUpdate : null,
-      onVerticalDragUpdate: widget.axis == Axis.vertical ? _onDragUpdate : null,
-      onHorizontalDragEnd: _onDragEnd,
-      onVerticalDragEnd: _onDragEnd,
+          axis == Axis.horizontal ? controller.onDragUpdate : null,
+      onVerticalDragUpdate:
+          axis == Axis.vertical ? controller.onDragUpdate : null,
+      onHorizontalDragEnd:
+          axis == Axis.horizontal ? controller.onDragEnd : null,
+      onVerticalDragEnd: axis == Axis.vertical ? controller.onDragEnd : null,
       child: _SlidablePanel(
-        controller: widget.controller,
-        axis: widget.axis,
-        maxSlideThreshold: widget.maxSlideThreshold,
+        controller: controller,
+        axis: axis,
+        maxSlideThreshold: maxSlideThreshold,
         children: [
-          if (_hasPreActionPanel) widget.preActionPanel!,
-          widget.child,
-          if (_hasPostActionPanel) widget.postActionPanel!,
+          if (preActionPanel != null) preActionPanel!,
+          child,
+          if (postActionPanel != null) postActionPanel!,
         ],
       ),
     );
   }
 
-  double _dragExtent = 0.0;
-  bool _isForward = false;
-
-  void _onDragUpdate(DragUpdateDetails details) {
-    final shift =
-        widget.axis == Axis.horizontal ? details.delta.dx : details.delta.dy;
-
-    _isForward = _dragExtent * shift > 0;
-    _dragExtent += shift;
-    widget.controller.slideTo(_dragExtent);
-  }
-
-  void _onDragEnd(DragEndDetails details) async {
-    final dragExtent = await widget.controller.toggle(
-      isForward: _isForward,
-    );
-
-    print("onDragEnd: $dragExtent");
-
-    _dragExtent = dragExtent ?? 0;
-
-    _isForward = false;
+  static SlideController? of(BuildContext context) {
+    final renderObject = context.findRenderObject() as RenderSlidable?;
+    return renderObject?.controller;
   }
 }

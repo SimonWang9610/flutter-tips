@@ -87,6 +87,19 @@ class LayoutSize {
         : size.height * maxSlideThreshold;
     return mainAxis * ratio;
   }
+
+  double? getOpenTarget(ActionPosition position) {
+    if (position == ActionPosition.pre && !hasPreAction) {
+      return null;
+    } else if (position == ActionPosition.post && !hasPostAction) {
+      return null;
+    }
+
+    return switch (position) {
+      ActionPosition.pre => 1,
+      ActionPosition.post => -1,
+    };
+  }
 }
 
 class SizedConstraints {

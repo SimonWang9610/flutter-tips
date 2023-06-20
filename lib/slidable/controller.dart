@@ -1,114 +1,58 @@
-import 'package:flutter/physics.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_tips/slidable/action_item_expander.dart';
 import 'models.dart';
 
 const double _lowerBound = -1;
 const double _upperBound = 1;
 const double _middleBound = 0;
+const double _kSlideRatioTolerance = 0.15;
 
-class SlideController extends _SlideAnimator {
-  SlideController() {
+class SlideController extends _SlideAnimator with DragForSlide {
+  final double slideTolerance;
+  SlideController({
+    this.slideTolerance = _kSlideRatioTolerance,
+  }) {
     _animationController.addListener(() {
       notifyListeners();
     });
   }
 
-  LayoutSize? _layoutSize;
-  LayoutSize? get layoutSize => _layoutSize;
-
-  @protected
-  set layoutSize(LayoutSize? layoutSize) {
-    if (_layoutSize != layoutSize) {
-      _layoutSize = layoutSize;
-    }
+  @override
+  bool shouldToggle(double dragDiff) {
+    return dragDiff.abs() > _kSlideRatioTolerance;
   }
 
-  /// [value] is the dragging extent during sliding
-  /// a positive value means the panel is sliding to show the pre actions
-  /// a negative value means the panel is sliding to show the post actions
-  @protected
-  void slideTo(double value) {
-    assert(layoutSize != null);
-    final newRatio =
-        layoutSize!.getRatio(value)?.clamp(_lowerBound, _upperBound).toDouble();
-
-    if (newRatio != null && newRatio != ratio) {
-      _animationValue = newRatio;
-    }
-  }
-
-  /// animate to the nearest target determined by [isForward] and the current [SlideDirection]
-  /// if [isForward] is true, it will animate to the next target
-  /// if [isForward] is false, it will always restore to the [_middleBound], hiding all actions
-  Future<double?> toggle({
-    required bool isForward,
-    Curve curve = Curves.bounceInOut,
+  Future<void> open({
+    ActionPosition position = ActionPosition.pre,
+    Curve curve = Curves.easeInOut,
     Duration duration = const Duration(milliseconds: 300),
   }) async {
-    final target = layoutSize!.getToggleTarget(direction, ratio, isForward);
+    final target = layoutSize!.getOpenTarget(position);
 
-    if (ratio != target) {
+    if (target != null && ratio != target) {
       await _animationController.animateTo(
         target,
         curve: curve,
         duration: duration,
       );
+      _resetDrag();
     }
-    return layoutSize!.getDragExtent(ratio);
   }
-
-  // Simulation _simulate(double target, double velocity) {
-  //   final springDesc =
-  //       SpringDescription.withDampingRatio(mass: 1.0, stiffness: 500);
-
-  //   return ScrollSpringSimulation(springDesc, ratio, target, velocity);
-  // }
 
   Future<void> dismiss({
-    Curve? curve,
-    Duration? duration,
+    Curve curve = Curves.easeInOut,
+    Duration duration = const Duration(milliseconds: 300),
+    VoidCallback? onDismissed,
   }) async {
-    final springDesc =
-        SpringDescription.withDampingRatio(mass: 1.0, stiffness: 500);
-
-    final simulation =
-        ScrollSpringSimulation(springDesc, ratio, _middleBound, -1);
-
-    await _animationController.animateWith(simulation);
-
-    // if (duration != null) {
-    //   return _animationController.animateTo(
-    //     _middleBound,
-    //     curve: curve ?? Curves.easeInOut,
-    //     duration: duration,
-    //   );
-    // } else {
-    //   return _animationController.fling(
-    //     velocity: 1,
-    //   );
-    // }
-  }
-
-  SlideDirection get direction {
-    assert(layoutSize != null);
-
-    if (ratio == 0) {
-      return SlideDirection.idle;
+    if (ratio != _middleBound) {
+      await _animationController.animateTo(
+        _middleBound,
+        curve: curve,
+        duration: duration,
+      );
+      _resetDrag();
     }
-
-    if (ratio > 0) {
-      return switch (layoutSize!.axis) {
-        Axis.horizontal => SlideDirection.leftToRight,
-        Axis.vertical => SlideDirection.topToBottom,
-      };
-    } else {
-      return switch (layoutSize!.axis) {
-        Axis.horizontal => SlideDirection.rightToLeft,
-        Axis.vertical => SlideDirection.bottomToTop,
-      };
-    }
+    onDismissed?.call();
   }
 }
 
@@ -139,5 +83,96 @@ class _SlideAnimator extends TickerProvider with ChangeNotifier {
   void dispose() {
     _animationController.dispose();
     super.dispose();
+  }
+}
+
+mixin DragForSlide on _SlideAnimator {
+  LayoutSize? _layoutSize;
+  LayoutSize? get layoutSize => _layoutSize;
+
+  @protected
+  set layoutSize(LayoutSize? layoutSize) {
+    if (_layoutSize != layoutSize) {
+      _layoutSize = layoutSize;
+    }
+  }
+
+  SlideDirection get direction {
+    assert(layoutSize != null);
+
+    if (ratio == 0) {
+      return SlideDirection.idle;
+    }
+
+    if (ratio > 0) {
+      return switch (layoutSize!.axis) {
+        Axis.horizontal => SlideDirection.leftToRight,
+        Axis.vertical => SlideDirection.topToBottom,
+      };
+    } else {
+      return switch (layoutSize!.axis) {
+        Axis.horizontal => SlideDirection.rightToLeft,
+        Axis.vertical => SlideDirection.bottomToTop,
+      };
+    }
+  }
+
+  double _dragExtent = 0;
+  bool _forwarding = false;
+
+  void _resetDrag() {
+    _dragExtent = layoutSize?.getDragExtent(ratio) ?? 0;
+    _forwarding = false;
+  }
+
+  bool shouldToggle(double dragDiff) => true;
+
+  void onDragUpdate(DragUpdateDetails details) {
+    assert(layoutSize != null);
+    final shift = switch (layoutSize!.axis) {
+      Axis.horizontal => details.delta.dx,
+      Axis.vertical => details.delta.dy,
+    };
+    _forwarding = _dragExtent * shift > 0;
+    _dragExtent += shift;
+
+    final newRatio = layoutSize!
+        .getRatio(_dragExtent)
+        ?.clamp(_lowerBound, _upperBound)
+        .toDouble();
+
+    if (newRatio != null && newRatio != ratio) {
+      _animationValue = newRatio;
+    }
+  }
+
+  void onDragEnd(DragEndDetails details) async {
+    assert(layoutSize != null);
+    final velocity = details.velocity.pixelsPerSecond;
+
+    final target = layoutSize!.getToggleTarget(direction, ratio, _forwarding);
+
+    final draggedRatio = _forwarding ? absoluteRatio : 1 - absoluteRatio;
+    final needToggle = shouldToggle(draggedRatio);
+
+    print(
+        "ratio: $ratio, target: $target, draggedRatio: $draggedRatio, velocity: ${velocity.distance}");
+
+    if (ratio != target && needToggle) {
+      await _animationController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 200),
+      );
+    } else if (!needToggle) {
+      final target =
+          _forwarding ? _middleBound : (ratio > 0 ? _upperBound : _lowerBound);
+
+      await _animationController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 200),
+      );
+    }
+
+    _resetDrag();
   }
 }
