@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart' hide Placeholder;
 import 'package:flutter_tips/onscreen/background.dart';
+import 'package:flutter_tips/onscreen/controller.dart';
 import 'package:flutter_tips/onscreen/widget.dart';
 import 'package:flutter_tips/onscreen/painter.dart';
 
@@ -13,20 +14,17 @@ class OnscreenBoardExample extends StatefulWidget {
 }
 
 class _OnscreenBoardExampleState extends State<OnscreenBoardExample> {
-  final Map<OnscreenPosition, OnscreenElement> _elements = {
-    OnscreenPosition.bottomCenter: PartyBanner("A", "We are the best"),
-    OnscreenPosition.topLeft: PartyLogo("https://example.com/logo.png"),
-    OnscreenPosition.topCenter: PartyBanner("B", "A Party Banner")
-  };
-
-  final OnscreenFocusNode _focusNode = OnscreenFocusNode(
-    border: const PaintConfiguration(color: Colors.red, width: 3),
-    // dashLength: 5,
+  final OnscreenController _controller = OnscreenController(
+    elements: {
+      OnscreenPosition.bottomCenter: PartyBanner("A", "We are the best"),
+      OnscreenPosition.topLeft: PartyLogo("https://example.com/logo.png"),
+      OnscreenPosition.topCenter: PartyBanner("B", "A Party Banner")
+    },
   );
 
   @override
   void dispose() {
-    _focusNode.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -35,33 +33,76 @@ class _OnscreenBoardExampleState extends State<OnscreenBoardExample> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        OnscreenBoard.builder(
-          builder: _buildElement,
-          margin: const EdgeInsets.all(2),
-          padding: const OnscreenPadding.symmetric(
-            vertical: 0.1,
-            horizontal: 0.1,
-          ),
-          preferredSize: const Size(640, 480),
-          focusNode: _focusNode,
-          backgroundPainter: OnscreenBackgroundPainter(
-            dashLength: 10,
-            border: const PaintConfiguration(color: Colors.black, width: 1),
-            dash: const PaintConfiguration(color: Colors.green, width: 1),
+        Expanded(
+          child: OnscreenBoard(
+            controller: _controller,
+            builder: (ctx, position) {
+              final ele = _controller.getElement(position);
+
+              final (desc, color) = switch (ele) {
+                PartyBanner(slogan: final s) => (s, Colors.green),
+                PartyLogo() => ("LOGO", Colors.yellow),
+                _ => ("None", Colors.black),
+              };
+              return InkWell(
+                onTap: () {
+                  if (_controller.focusedPosition == position) {
+                    _controller.unfocus();
+                  } else {
+                    _controller.focus(position);
+                  }
+                },
+                child: Container(
+                  color: color,
+                  child: Center(
+                    child: Text(
+                      desc,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            margin: const EdgeInsets.all(5),
+            padding: const OnscreenPadding.symmetric(
+              vertical: 0.1,
+              horizontal: 0.1,
+            ),
+            // preferredSize: const Size(640, 480),
+            painter: OnscreenPainter(
+              border: const PaintConfiguration(
+                color: Colors.black,
+                width: 1,
+                dash: 5,
+              ),
+              lines: const PaintConfiguration(
+                color: Colors.red,
+                width: 1,
+                dash: 5,
+              ),
+              focusedBorder: const PaintConfiguration(
+                color: Colors.green,
+                width: 3,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 20),
         ListenableBuilder(
-          listenable: _focusNode,
+          listenable: _controller,
           builder: (context, child) {
-            final desc = _focusNode.focusedPosition != null
-                ? "${_focusNode.focusedPosition}: ${_focusNode.focusedElement}"
+            final desc = _controller.focusedPosition != null
+                ? "${_controller.focusedPosition}: ${_controller.focusedElement}"
                 : "Not selected";
 
             return DecoratedBox(
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: _focusNode.focusedPosition != null
+                  color: _controller.focusedPosition != null
                       ? Colors.green
                       : Colors.grey,
                   width: 2,
@@ -88,39 +129,6 @@ class _OnscreenBoardExampleState extends State<OnscreenBoardExample> {
     );
   }
 
-  Widget _buildElement(OnscreenPosition position) {
-    final ele = _elements[position];
-
-    final (desc, color) = switch (ele) {
-      PartyBanner(slogan: final s) => (s, Colors.green),
-      PartyLogo() => ("LOGO", Colors.yellow),
-      _ => ("None", Colors.black),
-    };
-
-    return GestureDetector(
-      onTap: () {
-        if (_focusNode.focusedPosition == position) {
-          _focusNode.unfocus();
-        } else {
-          _focusNode.focus(position, ele);
-        }
-      },
-      child: Container(
-        color: color,
-        child: Center(
-          child: Text(
-            desc,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   void _randomAdd() {
     final i = Random().nextInt(OnscreenPosition.values.length);
     final pos = OnscreenPosition.values[i];
@@ -128,12 +136,19 @@ class _OnscreenBoardExampleState extends State<OnscreenBoardExample> {
         ? PartyBanner("Random $i", "Slogan $i")
         : PartyLogo("https://example.com/random-$i.png");
 
-    if (_elements.containsKey(pos)) {
-      _elements.remove(pos);
+    if (_controller.hasElement(pos)) {
     } else {
-      _elements[pos] = ele;
+      _controller.update(pos, ele);
     }
 
-    setState(() {});
+    // if (_controller.hasFocus) {
+    //   _controller.remove(_controller.focusedPosition!);
+    // }
+
+    // _controller.remove(pos);
+
+    // if (_controller.hasFocus) {
+    //   _controller.update(_controller.focusedPosition!, ele);
+    // }
   }
 }

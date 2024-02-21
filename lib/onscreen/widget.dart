@@ -1,6 +1,7 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_tips/onscreen/background.dart';
+import 'package:flutter_tips/onscreen/controller.dart';
 import 'package:flutter_tips/onscreen/painter.dart';
 import 'package:flutter_tips/onscreen/render.dart';
 
@@ -66,30 +67,30 @@ class OnscreenElementWidget extends ParentDataWidget<OnscreenBoxData> {
   }
 
   @override
-  Type get debugTypicalAncestorWidgetClass => OnscreenBoard;
+  Type get debugTypicalAncestorWidgetClass => _OnscreenBoard;
 }
 
-typedef OnscreenPositionedElementBuilder = Widget Function(
+typedef OnscreenPositionedElementCreator = Widget Function(
     OnscreenPosition position);
 
-class OnscreenBoard extends MultiChildRenderObjectWidget {
+class _OnscreenBoard extends MultiChildRenderObjectWidget {
   final OnscreenPadding padding;
-  final OnscreenBackgroundPainter? backgroundPainter;
-  final OnscreenFocusNode? focusNode;
+  final OnscreenPainter? painter;
+  final OnscreenController controller;
   final Size? preferredSize;
 
-  OnscreenBoard.builder({
+  _OnscreenBoard.builder({
     super.key,
     required this.padding,
-    required OnscreenPositionedElementBuilder builder,
-    this.backgroundPainter,
-    this.focusNode,
+    required this.controller,
+    required OnscreenPositionedElementCreator creator,
+    this.painter,
     this.preferredSize,
     EdgeInsets? margin,
     bool addRepaintBoundary = true,
   }) : super(
           children: wrap(
-            builder,
+            creator,
             addRepaintBoundary: addRepaintBoundary,
             margin: margin,
           ),
@@ -99,28 +100,28 @@ class OnscreenBoard extends MultiChildRenderObjectWidget {
   RenderOnscreen createRenderObject(BuildContext context) {
     return RenderOnscreen(
       padding: padding,
-      backgroundPainter: backgroundPainter,
+      painter: painter,
       preferredSize: preferredSize,
-      focusNode: focusNode,
+      controller: controller,
     );
   }
 
   @override
   void updateRenderObject(BuildContext context, RenderOnscreen renderObject) {
     renderObject
-      ..focusNode = focusNode
+      ..controller = controller
       ..padding = padding
-      ..backgroundPainter = backgroundPainter
+      ..painter = painter
       ..preferredSize = preferredSize;
   }
 
   static List<Widget> wrap(
-    OnscreenPositionedElementBuilder builder, {
+    OnscreenPositionedElementCreator creator, {
     bool addRepaintBoundary = true,
     EdgeInsets? margin,
   }) {
     final elements = OnscreenPosition.values.map((pos) {
-      Widget w = builder(pos);
+      Widget w = creator(pos);
       Key? key = w.key != null ? ValueKey(w.key) : null;
 
       if (margin != null) {
@@ -139,5 +140,62 @@ class OnscreenBoard extends MultiChildRenderObjectWidget {
     });
 
     return elements.toList();
+  }
+}
+
+typedef OnscreenElementBuilder = Widget Function(
+    BuildContext context, OnscreenPosition position);
+
+class OnscreenBoard extends StatefulWidget {
+  final OnscreenPadding padding;
+  final OnscreenController controller;
+  final OnscreenElementBuilder builder;
+
+  final OnscreenPainter? painter;
+  final Size? preferredSize;
+  final EdgeInsets? margin;
+
+  const OnscreenBoard({
+    super.key,
+    required this.padding,
+    required this.controller,
+    required this.builder,
+    this.painter,
+    this.preferredSize,
+    this.margin,
+  });
+
+  @override
+  State<OnscreenBoard> createState() => _OnscreenBoardState();
+}
+
+class _OnscreenBoardState extends State<OnscreenBoard> with OnscreenRefresher {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.attach(this);
+  }
+
+  @override
+  void didUpdateWidget(covariant OnscreenBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.detach();
+      widget.controller.attach(this);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _OnscreenBoard.builder(
+      padding: widget.padding,
+      controller: widget.controller,
+      margin: widget.margin,
+      preferredSize: widget.preferredSize,
+      painter: widget.painter,
+      creator: (position) {
+        return widget.builder(context, position);
+      },
+    );
   }
 }

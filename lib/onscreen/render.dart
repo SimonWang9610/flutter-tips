@@ -1,5 +1,6 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter_tips/onscreen/background.dart';
+import 'package:flutter_tips/onscreen/controller.dart';
 import 'package:flutter_tips/onscreen/widget.dart';
 import 'package:flutter_tips/onscreen/painter.dart';
 
@@ -10,46 +11,45 @@ class RenderOnscreen extends RenderBox
         DebugOverflowIndicatorMixin {
   RenderOnscreen({
     required OnscreenPadding padding,
+    required OnscreenController controller,
     List<RenderBox>? children,
-    OnscreenBackgroundPainter? backgroundPainter,
+    OnscreenPainter? painter,
     OnscreenFocusNode? focusNode,
     Size? preferredSize,
   })  : _padding = padding,
-        _backgroundPainter = backgroundPainter,
-        _focusNode = focusNode,
+        _painter = painter,
+        _controller = controller,
         _preferredSize = preferredSize,
         super() {
     addAll(children);
   }
 
-  OnscreenBackgroundPainter? _backgroundPainter;
-  OnscreenBackgroundPainter? get backgroundPainter => _backgroundPainter;
-  set backgroundPainter(OnscreenBackgroundPainter? value) {
-    if (_backgroundPainter == value) return;
+  OnscreenPainter? _painter;
+  OnscreenPainter? get painter => _painter;
+  set painter(OnscreenPainter? value) {
+    if (_painter == value) return;
 
-    final old = _backgroundPainter;
-    _backgroundPainter = value;
+    final old = _painter;
+    _painter = value;
 
-    if (old == null || (_backgroundPainter?.shouldRepaint(old) ?? false)) {
+    if (old == null || (_painter?.shouldRepaint(old) ?? false)) {
       markNeedsPaint();
     }
   }
 
-  OnscreenFocusNode? _focusNode;
-  OnscreenFocusNode? get focusNode => _focusNode;
-  set focusNode(OnscreenFocusNode? value) {
-    if (_focusNode == value) return;
-    final old = _focusNode;
-    _focusNode = value;
+  OnscreenController _controller;
+  OnscreenController get controller => _controller;
+  set controller(OnscreenController value) {
+    if (_controller == value) return;
+    final old = _controller;
+    _controller = value;
 
     if (attached) {
-      old?.removeListener(markNeedsPaint);
-      _focusNode?.addListener(markNeedsPaint);
+      old.removeListener(markNeedsPaint);
+      _controller.addListener(markNeedsPaint);
     }
 
-    if (old == null || (_focusNode?.shouldRepaint(old) ?? false)) {
-      markNeedsPaint();
-    }
+    // markNeedsPaint();
   }
 
   OnscreenPadding _padding;
@@ -121,17 +121,20 @@ class RenderOnscreen extends RenderBox
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    if (_backgroundPainter != null) {
-      _backgroundPainter!.paint(context.canvas, size, padding);
+    if (painter != null) {
+      painter!.paintBackground(context.canvas, size, padding);
     }
 
     defaultPaint(context, offset);
 
-    if (focusNode != null && _scales.containsKey(focusNode!.focusedPosition)) {
-      final scale = _scales[focusNode!.focusedPosition!]!;
+    if (_scales.containsKey(controller.focusedPosition)) {
+      final scale = _scales[controller.focusedPosition!]!;
 
-      focusNode!.paint(context.canvas, scale.getScaleSize(size),
-          scale.getTopLeft(size) + offset);
+      painter?.paintFocusedBorder(
+        context.canvas,
+        scale.getScaleSize(size),
+        scale.getTopLeft(size) + offset,
+      );
     }
   }
 
@@ -143,12 +146,12 @@ class RenderOnscreen extends RenderBox
   @override
   void attach(PipelineOwner owner) {
     super.attach(owner);
-    _focusNode?.addListener(markNeedsPaint);
+    _controller.addListener(markNeedsPaint);
   }
 
   @override
   void detach() {
-    _focusNode?.removeListener(markNeedsPaint);
+    _controller.removeListener(markNeedsPaint);
     super.detach();
   }
 }

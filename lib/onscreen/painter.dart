@@ -8,11 +8,13 @@ class PaintConfiguration {
   final Color color;
   final double width;
   final StrokeCap? cap;
+  final double? dash;
 
   const PaintConfiguration({
     required this.color,
     required this.width,
     this.cap,
+    this.dash,
   });
 
   Paint toPaint() {
@@ -24,38 +26,37 @@ class PaintConfiguration {
   }
 }
 
-class OnscreenBackgroundPainter with DashableLinePainter {
+class OnscreenPainter with DashableLinePainter {
   final PaintConfiguration? border;
-  final PaintConfiguration? dash;
-  final double? dashLength;
+  final PaintConfiguration? lines;
+  final PaintConfiguration? focusedBorder;
 
-  OnscreenBackgroundPainter({
+  OnscreenPainter({
     this.border,
-    this.dash,
-    this.dashLength,
+    this.lines,
+    this.focusedBorder,
   });
 
-  bool shouldRepaint(covariant OnscreenBackgroundPainter old) {
-    return border != old.border || dash != old.dash;
+  bool shouldRepaint(covariant OnscreenPainter old) {
+    return border != old.border ||
+        lines != old.lines ||
+        focusedBorder != old.focusedBorder;
   }
 
-  void paint(Canvas canvas, Size size, OnscreenPadding padding) {
+  void paintBackground(Canvas canvas, Size size, OnscreenPadding padding) {
     if (border != null) {
-      canvas.drawRect(
-        Offset.zero & size,
-        border!.toPaint(),
-      );
+      _paintBorder(canvas, size, Offset.zero, border!);
     }
 
-    if (dash != null) {
-      final paint = dash!.toPaint();
+    if (lines != null) {
+      final paint = lines!.toPaint();
 
       drawDashLine(
         canvas,
         start: Offset(0, padding.top * size.height),
         end: Offset(size.width, padding.top * size.height),
         paint: paint,
-        dashLength: dashLength,
+        dashLength: lines!.dash,
       );
 
       drawDashLine(
@@ -63,7 +64,7 @@ class OnscreenBackgroundPainter with DashableLinePainter {
         start: Offset(0, (1 - padding.bottom) * size.height),
         end: Offset(size.width, (1 - padding.bottom) * size.height),
         paint: paint,
-        dashLength: dashLength,
+        dashLength: lines!.dash,
       );
 
       drawDashLine(
@@ -71,7 +72,7 @@ class OnscreenBackgroundPainter with DashableLinePainter {
         start: Offset((1 - padding.right) * size.width, 0),
         end: Offset((1 - padding.right) * size.width, size.height),
         paint: paint,
-        dashLength: dashLength,
+        dashLength: lines!.dash,
       );
 
       drawDashLine(
@@ -79,9 +80,61 @@ class OnscreenBackgroundPainter with DashableLinePainter {
         start: Offset(padding.left * size.width, 0),
         end: Offset(padding.left * size.width, size.height),
         paint: paint,
-        dashLength: dashLength,
+        dashLength: lines!.dash,
       );
     }
+  }
+
+  void paintFocusedBorder(Canvas canvas, Size size, Offset offset) {
+    if (focusedBorder != null) {
+      _paintBorder(canvas, size, offset, focusedBorder!);
+    }
+  }
+
+  void _paintBorder(Canvas canvas, Size size, Offset offset,
+      PaintConfiguration configuration) {
+    if (size.isEmpty) {
+      return;
+    }
+
+    final paint = configuration.toPaint();
+
+    if (configuration.dash == null) {
+      canvas.drawRect(offset & size, paint);
+      return;
+    }
+
+    drawDashLine(
+      canvas,
+      start: offset,
+      end: size.topRight(offset),
+      paint: paint,
+      dashLength: configuration.dash,
+    );
+
+    drawDashLine(
+      canvas,
+      start: size.topRight(offset),
+      end: size.bottomRight(offset),
+      paint: paint,
+      dashLength: configuration.dash,
+    );
+
+    drawDashLine(
+      canvas,
+      start: size.bottomRight(offset),
+      end: size.bottomLeft(offset),
+      paint: paint,
+      dashLength: configuration.dash,
+    );
+
+    drawDashLine(
+      canvas,
+      start: size.bottomLeft(offset),
+      end: offset,
+      paint: paint,
+      dashLength: configuration.dash,
+    );
   }
 }
 
