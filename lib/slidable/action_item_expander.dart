@@ -21,7 +21,7 @@ final class ActionController extends TickerProvider with ChangeNotifier {
   Future<void> expand(
     int index, {
     Curve curve = Curves.easeInOut,
-    Duration duration = const Duration(milliseconds: 300),
+    Duration duration = const Duration(milliseconds: 150),
   }) async {
     if (_index != index) {
       _index = index;
@@ -34,7 +34,7 @@ final class ActionController extends TickerProvider with ChangeNotifier {
   Future<void> collapse(
     int index, {
     Curve curve = Curves.easeInOut,
-    Duration duration = const Duration(milliseconds: 300),
+    Duration duration = const Duration(milliseconds: 150),
   }) async {
     if (_index == index) {
       // await _animationController.animateBack(
@@ -51,7 +51,7 @@ final class ActionController extends TickerProvider with ChangeNotifier {
   Future<void> toggle(
     int index, {
     Curve curve = Curves.easeInOut,
-    Duration duration = const Duration(milliseconds: 300),
+    Duration duration = const Duration(milliseconds: 150),
   }) async {
     if (_index == index) {
       await collapse(index, curve: curve, duration: duration);

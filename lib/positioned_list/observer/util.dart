@@ -10,7 +10,7 @@ class ObserverUtil {
     RenderSliver sliver, {
     int maxTraceCount = 5,
   }) {
-    AbstractNode? viewport = sliver.parent;
+    RenderObject? viewport = sliver.parent;
 
     int traceCount = 0;
 
@@ -44,7 +44,7 @@ class ObserverUtil {
       return sliver;
     } else {
       int traceCount = 0;
-      AbstractNode? closest = sliver.parent;
+      RenderObject? closest = sliver.parent;
       while (traceCount < maxTraceCount && closest != null) {
         if (closest.parent is RenderViewportBase) {
           break;

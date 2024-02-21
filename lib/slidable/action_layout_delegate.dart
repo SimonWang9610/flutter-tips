@@ -140,8 +140,8 @@ class SpaceEvenlyLayoutDelegate extends BaseActionLayoutDelegate {
   });
 
   /// If [controller] is not null, the [controller]'s index would be expanded to occupy the total space of the [SlideActionPanel]
-  /// however, the [ActionItemcontroller.index] may not occupy the total space after expanded
-  /// therefore, we should add the remained space to the [ActionItemcontroller.index] before expanding it
+  /// however, the [ActionController.index] may not occupy the total space after expanded
+  /// therefore, we should add the remained space to the [ActionController.index] before expanding it
   /// currently, all action items are laid out using a tight [BoxConstraints]
   @override
   SizedConstraints getSizedConstraints({

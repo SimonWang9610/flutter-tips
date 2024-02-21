@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/indicator/linear.dart';
+import 'package:flutter_tips/onscreen/background.dart';
+import 'package:flutter_tips/onscreen/example.dart';
 import 'package:flutter_tips/slidable/example.dart';
 
 void main() {
@@ -21,7 +23,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       // home: const MyHomePage(title: "List Example"),
-      home: const MyHomePage(title: "timezone example"),
+      home: const MyHomePage(title: "Onscreen example"),
     );
   }
 }
@@ -36,43 +38,6 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Timer? _timer;
-
-  double _current = 0;
-
-  double total = 10;
-  @override
-  void initState() {
-    super.initState();
-
-    _toggleTimer();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _toggleTimer() {
-    if (_timer?.isActive == true) {
-      _timer?.cancel();
-      _timer = null;
-      _current = 0;
-      setState(() {});
-    } else {
-      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        _current += 1;
-
-        if (_current > total) {
-          _current = 0;
-        }
-
-        setState(() {});
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,7 +47,7 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: const Center(
-        child: SlidableExample(),
+        child: OnscreenBoardExample(),
       ),
     );
   }
