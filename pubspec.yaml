@@ -33,6 +33,8 @@ dependencies:
   positioned_scroll_observer: ^2.1.1
   flutter_slidable: ^3.0.0
   go_router: ^9.0.1
+  dropdown_button2: ^3.0.0-beta.10
+
 
 
 dev_dependencies:

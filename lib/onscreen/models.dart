@@ -1,3 +1,27 @@
+sealed class OnscreenElement {}
+
+final class PartyBanner extends OnscreenElement {
+  final String name;
+  final String slogan;
+
+  PartyBanner(this.name, this.slogan);
+
+  @override
+  String toString() {
+    return "PartyBanner($name, $slogan)";
+  }
+}
+
+final class PartyLogo extends OnscreenElement {
+  final String url;
+  PartyLogo(this.url);
+
+  @override
+  String toString() {
+    return "PartyLogo($url)";
+  }
+}
+
 class OnscreenPadding {
   final double top;
   final double bottom;

@@ -1,6 +1,5 @@
 import 'package:flutter/rendering.dart';
-import 'package:flutter_tips/onscreen/background.dart';
-import 'package:flutter_tips/onscreen/controller.dart';
+import 'package:flutter_tips/onscreen/models.dart';
 import 'package:flutter_tips/onscreen/widget.dart';
 import 'package:flutter_tips/onscreen/painter.dart';
 

@@ -1,8 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/onscreen/background.dart';
-import 'package:flutter_tips/onscreen/widget.dart';
+import 'package:flutter_tips/onscreen/models.dart';
 
 class PaintConfiguration {
   final Color color;

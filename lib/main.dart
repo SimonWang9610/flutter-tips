@@ -1,10 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/indicator/linear.dart';
-import 'package:flutter_tips/onscreen/background.dart';
+import 'package:flutter_tips/dropdown/example.dart';
 import 'package:flutter_tips/onscreen/example.dart';
-import 'package:flutter_tips/slidable/example.dart';
 
 void main() {
   runApp(const MyApp());
@@ -47,7 +43,10 @@ class _MyHomePageState extends State<MyHomePage> {
         title: Text(widget.title),
       ),
       body: const Center(
-        child: OnscreenBoardExample(),
+        child: Padding(
+          padding: EdgeInsets.all(8.0),
+          child: DropdownExample(),
+        ),
       ),
     );
   }

@@ -1,51 +1,17 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_tips/onscreen/background.dart';
-import 'package:flutter_tips/onscreen/controller.dart';
+import 'package:flutter_tips/onscreen/models.dart';
 import 'package:flutter_tips/onscreen/painter.dart';
 import 'package:flutter_tips/onscreen/render.dart';
-
-sealed class OnscreenElement {}
-
-final class PartyBanner extends OnscreenElement {
-  final String name;
-  final String slogan;
-
-  PartyBanner(this.name, this.slogan);
-
-  @override
-  String toString() {
-    return "PartyBanner($name, $slogan)";
-  }
-}
-
-final class PartyLogo extends OnscreenElement {
-  final String url;
-  PartyLogo(this.url);
-
-  @override
-  String toString() {
-    return "PartyLogo($url)";
-  }
-}
-
-final class PartyEmpty extends OnscreenElement {
-  PartyEmpty();
-
-  @override
-  String toString() {
-    return "PartyEmpty";
-  }
-}
 
 class OnscreenBoxData extends ContainerBoxParentData<RenderBox> {
   OnscreenPosition? position;
 }
 
-class OnscreenElementWidget extends ParentDataWidget<OnscreenBoxData> {
+class _OnscreenElementWidget extends ParentDataWidget<OnscreenBoxData> {
   final OnscreenPosition position;
 
-  const OnscreenElementWidget({
+  const _OnscreenElementWidget({
     super.key,
     required this.position,
     required super.child,
@@ -132,7 +98,7 @@ class _OnscreenBoard extends MultiChildRenderObjectWidget {
         w = RepaintBoundary(child: w);
       }
 
-      return OnscreenElementWidget(
+      return _OnscreenElementWidget(
         key: key,
         position: pos,
         child: w,
@@ -169,25 +135,38 @@ class OnscreenBoard extends StatefulWidget {
   State<OnscreenBoard> createState() => _OnscreenBoardState();
 }
 
-class _OnscreenBoardState extends State<OnscreenBoard> with OnscreenRefresher {
+class _OnscreenBoardState extends State<OnscreenBoard> {
   @override
   void initState() {
     super.initState();
-    widget.controller.attach(this);
+    widget.controller._attach(this);
+  }
+
+  @override
+  void dispose() {
+    widget.controller._detach();
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(covariant OnscreenBoard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller.detach();
-      widget.controller.attach(this);
+      oldWidget.controller._detach();
+      widget.controller._attach(this);
+    }
+  }
+
+  void refresh() {
+    if (mounted) {
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return _OnscreenBoard.builder(
+      key: widget.key,
       padding: widget.padding,
       controller: widget.controller,
       margin: widget.margin,
@@ -197,5 +176,96 @@ class _OnscreenBoardState extends State<OnscreenBoard> with OnscreenRefresher {
         return widget.builder(context, position);
       },
     );
+  }
+}
+
+class OnscreenController extends ChangeNotifier {
+  final Map<OnscreenPosition, OnscreenElement> _elements;
+
+  OnscreenController({
+    Map<OnscreenPosition, OnscreenElement>? elements,
+    OnscreenPosition? initialFocus,
+  })  : _elements = elements ?? {},
+        _focusedPosition = initialFocus;
+
+  OnscreenElement? get focusedElement =>
+      focusedPosition != null ? _elements[focusedPosition!] : null;
+
+  OnscreenPosition? _focusedPosition;
+  OnscreenPosition? get focusedPosition => _focusedPosition;
+
+  bool get hasFocus => _focusedPosition != null;
+
+  void focus(OnscreenPosition position) {
+    if (_focusedPosition != position) {
+      _focusedPosition = position;
+      notifyListeners();
+    }
+  }
+
+  void unfocus() {
+    if (_focusedPosition != null) {
+      _focusedPosition = null;
+      notifyListeners();
+    }
+  }
+
+  OnscreenElement? getElement(OnscreenPosition position) {
+    return _elements[position];
+  }
+
+  void update(OnscreenPosition position, OnscreenElement element) {
+    assert(_state != null, "OnscreenController must be attached.");
+
+    _elements[position] = element;
+
+    if (_focusedPosition == position) {
+      notifyListeners();
+    }
+
+    _state?.refresh();
+  }
+
+  void remove(OnscreenPosition position) {
+    assert(_state != null, "OnscreenController must be attached.");
+
+    _elements.remove(position);
+
+    if (_focusedPosition == position) {
+      notifyListeners();
+    }
+
+    _state?.refresh();
+  }
+
+  void addElements(Map<OnscreenPosition, OnscreenElement> elements) {
+    assert(_state != null, "OnscreenController must be attached.");
+
+    if (_elements == elements) return;
+
+    _elements.addAll(elements);
+
+    _state?.refresh();
+    notifyListeners();
+  }
+
+  bool hasElement(OnscreenPosition position) {
+    return _elements.containsKey(position);
+  }
+
+  _OnscreenBoardState? _state;
+
+  void _attach(_OnscreenBoardState refresher) {
+    _state = refresher;
+  }
+
+  void _detach() {
+    _state = null;
+  }
+
+  @override
+  void dispose() {
+    _detach();
+    super.dispose();
   }
 }

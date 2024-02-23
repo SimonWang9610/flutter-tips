@@ -1,8 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart' hide Placeholder;
-import 'package:flutter_tips/onscreen/background.dart';
-import 'package:flutter_tips/onscreen/controller.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_tips/onscreen/models.dart';
 import 'package:flutter_tips/onscreen/widget.dart';
 import 'package:flutter_tips/onscreen/painter.dart';
 
@@ -76,16 +75,16 @@ class _OnscreenBoardExampleState extends State<OnscreenBoardExample> {
             painter: OnscreenPainter(
               border: const PaintConfiguration(
                 color: Colors.black,
-                width: 1,
-                dash: 5,
+                width: 2,
+                // dash: 5,
               ),
               lines: const PaintConfiguration(
-                color: Colors.red,
+                color: Colors.green,
                 width: 1,
                 dash: 5,
               ),
               focusedBorder: const PaintConfiguration(
-                color: Colors.green,
+                color: Colors.red,
                 width: 3,
               ),
             ),
@@ -137,6 +136,7 @@ class _OnscreenBoardExampleState extends State<OnscreenBoardExample> {
         : PartyLogo("https://example.com/random-$i.png");
 
     if (_controller.hasElement(pos)) {
+      _controller.remove(pos);
     } else {
       _controller.update(pos, ele);
     }
