@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ffi';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide DropdownButtonBuilder;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_tips/dropdown/models.dart';
@@ -445,9 +447,11 @@ class _DropdownMenu<T> extends StatelessWidget {
 
 class DropdownScope extends StatefulWidget {
   final Widget child;
+  final Listenable? listenable;
   const DropdownScope({
     super.key,
     required this.child,
+    this.listenable,
   });
 
   @override
@@ -464,6 +468,21 @@ class DropdownScope extends StatefulWidget {
 
 class _DropdownScopeState extends State<DropdownScope> {
   final Set<DropdownController> _controllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    widget.listenable?.addListener(_dismissAll);
+  }
+
+  @override
+  void didUpdateWidget(covariant DropdownScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.listenable != widget.listenable) {
+      oldWidget.listenable?.removeListener(_dismissAll);
+      widget.listenable?.addListener(_dismissAll);
+    }
+  }
 
   void observe(DropdownController controller) {
     _controllers.add(controller);
