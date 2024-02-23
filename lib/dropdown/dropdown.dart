@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' hide DropdownButtonBuilder;
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_tips/dropdown/models.dart';
 
 void _ensureLegallyInvokeVoidCallback(Function callback) {
   if (WidgetsBinding.instance.schedulerPhase ==
@@ -14,16 +14,6 @@ void _ensureLegallyInvokeVoidCallback(Function callback) {
     });
   }
 }
-
-typedef DropdownItemLoader<T> = FutureOr<List<T>> Function();
-typedef DropdownItemSearcher<T> = FutureOr<List<T>> Function(String);
-typedef MenuItemBuilder<T> = Widget Function(BuildContext, T);
-typedef DropdownButtonBuilder<T> = Widget Function(BuildContext, T?);
-typedef AnimationMenuBuilder = Widget Function(
-  BuildContext,
-  Animation<double>,
-  Widget? child,
-);
 
 /// todo: undo search results
 abstract mixin class _DropdownItemManager<T> {
@@ -179,6 +169,10 @@ class DropdownController<T> extends ChangeNotifier
 
   @override
   void dispose() {
+    if (_state != null) {
+      DropdownScope._of(_state!.context)?.unobserve(this);
+    }
+
     _overlay?.dispose();
     _overlay = null;
     super.dispose();
@@ -195,15 +189,6 @@ class Dropdown<T> extends StatefulWidget {
 
   /// The controller that will be used to manage the dropdown menu and items.
   final DropdownController<T> controller;
-
-  /// the anchor point of the dropdown menu should be aligned to the dropdown trigger widget.
-  final Alignment targetAnchor;
-
-  /// the anchor point of the dropdown menu should use to align itself with the target anchor.
-  final Alignment anchor;
-
-  /// the offset between the dropdown trigger and the dropdown menu after aligning them.
-  final Offset offset;
 
   /// The builder that will be used to build the menu items.
   final MenuItemBuilder<T> itemBuilder;
@@ -225,6 +210,9 @@ class Dropdown<T> extends StatefulWidget {
   /// It only takes effect when the menu is displaying.
   final BoxConstraints? menuConstraints;
 
+  /// The position that will be used to position the dropdown menu.
+  final DropdownMenuPosition menuPosition;
+
   /// todo: support different axis
   /// Whether the dropdown menu should be constrained by the cross axis of the dropdown trigger.
   /// It will work with [menuConstraints] to constrain the dropdown menu if applicable.
@@ -245,9 +233,7 @@ class Dropdown<T> extends StatefulWidget {
     this.loadingBuilder,
     this.menuConstraints,
     this.menuDecoration,
-    this.targetAnchor = Alignment.bottomLeft,
-    this.anchor = Alignment.topLeft,
-    this.offset = Offset.zero,
+    this.menuPosition = const DropdownMenuPosition(),
     this.crossAxisConstrained = true,
     this.dismissible = true,
     this.enabled = true,
@@ -266,6 +252,12 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    DropdownScope._of(context)?.observe(widget.controller);
+  }
+
+  @override
   void didUpdateWidget(covariant Dropdown<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
 
@@ -278,9 +270,7 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
         oldWidget.separatorBuilder != widget.separatorBuilder ||
         oldWidget.menuDecoration != widget.menuDecoration ||
         oldWidget.menuConstraints != widget.menuConstraints ||
-        oldWidget.targetAnchor != widget.targetAnchor ||
-        oldWidget.anchor != widget.anchor ||
-        oldWidget.offset != widget.offset ||
+        oldWidget.menuPosition != widget.menuPosition ||
         oldWidget.crossAxisConstrained != widget.crossAxisConstrained ||
         oldWidget.loadingBuilder != widget.loadingBuilder) {
       widget.controller._rebuildMenu();
@@ -312,9 +302,7 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
             loadingBuilder: widget.loadingBuilder,
             decoration: widget.menuDecoration,
             constraints: widget.menuConstraints,
-            targetAnchor: widget.targetAnchor,
-            anchor: widget.anchor,
-            offset: widget.offset,
+            position: widget.menuPosition,
             crossAxisConstrained: widget.crossAxisConstrained,
           ),
         );
@@ -355,9 +343,9 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
 /// [CompositedTransformFollower.showWhenUnlinked] Only takes effects after the [CompositedTransformTarget]'s render is disposed
 class _DropdownMenu<T> extends StatelessWidget {
   final LayerLink link;
-  final Alignment targetAnchor;
-  final Alignment anchor;
-  final Offset offset;
+
+  /// The position that will be used to position the dropdown menu.
+  final DropdownMenuPosition position;
   final List<T> items;
   final MenuItemBuilder<T> itemBuilder;
   final IndexedWidgetBuilder? separatorBuilder;
@@ -377,13 +365,11 @@ class _DropdownMenu<T> extends StatelessWidget {
     required this.link,
     required this.items,
     required this.itemBuilder,
+    required this.position,
     this.separatorBuilder,
     this.decoration,
     this.constraints,
     this.selected,
-    this.targetAnchor = Alignment.bottomLeft,
-    this.anchor = Alignment.topLeft,
-    this.offset = Offset.zero,
     this.crossAxisConstrained = true,
     this.onTapOutside,
     this.animationBuilder,
@@ -394,7 +380,7 @@ class _DropdownMenu<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reversed = anchor.y > 0;
+    final reversed = position.anchor.y > 0;
 
     Widget result;
 
@@ -442,9 +428,9 @@ class _DropdownMenu<T> extends StatelessWidget {
       child: CompositedTransformFollower(
         link: link,
         showWhenUnlinked: false,
-        targetAnchor: targetAnchor,
-        followerAnchor: anchor,
-        offset: offset,
+        targetAnchor: position.targetAnchor,
+        followerAnchor: position.anchor,
+        offset: position.offset,
         child: Material(
           type: MaterialType.card,
           child: DecoratedBox(
@@ -453,6 +439,57 @@ class _DropdownMenu<T> extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class DropdownScope extends StatefulWidget {
+  final Widget child;
+  const DropdownScope({
+    super.key,
+    required this.child,
+  });
+
+  @override
+  State<DropdownScope> createState() => _DropdownScopeState();
+
+  static _DropdownScopeState? _of(BuildContext context) {
+    return context.findAncestorStateOfType<_DropdownScopeState>();
+  }
+
+  static void dismissAll(BuildContext context) {
+    _of(context)?._dismissAll();
+  }
+}
+
+class _DropdownScopeState extends State<DropdownScope> {
+  final Set<DropdownController> _controllers = {};
+
+  void observe(DropdownController controller) {
+    _controllers.add(controller);
+  }
+
+  void unobserve(DropdownController controller) {
+    _controllers.remove(controller);
+  }
+
+  void _dismissAll() {
+    for (final controller in _controllers) {
+      controller.dismiss();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener(
+      child: widget.child,
+      onNotification: (notification) {
+        if (notification is ScrollNotification ||
+            notification is NavigationNotification) {
+          _dismissAll();
+        }
+        return false;
+      },
     );
   }
 }

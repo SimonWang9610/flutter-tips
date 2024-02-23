@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_tips/dropdown/dropdown.dart';
+import 'package:flutter_tips/dropdown/models.dart';
 
 class DropdownExample extends StatefulWidget {
   const DropdownExample({super.key});
@@ -33,6 +34,27 @@ class _DropdownExampleState extends State<DropdownExample> {
     return SingleChildScrollView(
       child: Column(
         children: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => Scaffold(
+                    appBar: AppBar(
+                      title: Text("Another Page"),
+                    ),
+                    body: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: DropdownExample(),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: Text("go another page"),
+          ),
+          const SizedBox(height: 30),
           Dropdown<String>(
             controller: _controller,
             builder: (_, selected) => Container(
@@ -69,7 +91,8 @@ class _DropdownExampleState extends State<DropdownExample> {
             // ),
             // targetAnchor: Alignment.topLeft,
             // anchor: Alignment.bottomLeft,
-            offset: const Offset(0, 8),
+
+            menuPosition: DropdownMenuPosition(),
             menuConstraints: const BoxConstraints(
               maxHeight: 150,
             ),

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tips/dropdown/dropdown.dart';
 import 'package:flutter_tips/dropdown/example.dart';
-import 'package:flutter_tips/onscreen/example.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    const DropdownScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
