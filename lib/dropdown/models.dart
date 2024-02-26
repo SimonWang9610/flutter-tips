@@ -45,7 +45,8 @@ class DropdownMenuPosition {
 }
 
 typedef DropdownItemLoader<T> = FutureOr<List<T>> Function();
-typedef DropdownItemSearcher<T> = FutureOr<List<T>> Function(String);
+typedef DropdownItemAsyncSearcher<T> = Future<List<T>> Function(String);
+typedef DropdownItemMatcher<T> = bool Function(T, String);
 typedef MenuItemBuilder<T> = Widget Function(BuildContext, T);
 typedef DropdownButtonBuilder<T> = Widget Function(BuildContext, T?);
 typedef AnimationMenuBuilder = Widget Function(
@@ -53,3 +54,6 @@ typedef AnimationMenuBuilder = Widget Function(
   Animation<double>,
   Widget? child,
 );
+
+typedef DropdownMenuBuilder<T> = Widget Function(
+    BuildContext, List<T> items, bool loading);

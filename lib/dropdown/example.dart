@@ -55,7 +55,7 @@ class _DropdownExampleState extends State<DropdownExample> {
             child: Text("go another page"),
           ),
           const SizedBox(height: 30),
-          Dropdown<String>(
+          Dropdown<String>.list(
             controller: _controller,
             builder: (_, selected) => Container(
               width: 150,
@@ -132,30 +132,5 @@ class _DropdownExampleState extends State<DropdownExample> {
         ],
       ),
     );
-  }
-
-  Timer? _debounce;
-
-  void _search() {
-    _debounce?.cancel();
-
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (_textController.text.isEmpty) {
-        _controller.restore();
-      } else {
-        _controller.search(
-          (query) => Future.delayed(
-            const Duration(seconds: 1),
-            () => [
-              "$query 1",
-              "$query 2",
-              "$query 3",
-              "$query 4",
-            ],
-          ),
-          _textController.text,
-        );
-      }
-    });
   }
 }

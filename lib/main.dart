@@ -4,9 +4,7 @@ import 'package:flutter_tips/dropdown/example.dart';
 
 void main() {
   runApp(
-    const DropdownScope(
-      child: MyApp(),
-    ),
+    const MyApp(),
   );
 }
 
