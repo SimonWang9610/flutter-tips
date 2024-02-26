@@ -118,7 +118,7 @@ class RenderObserverProxy extends RenderProxyBox {
   RenderSliver? _findParentSliver() {
     if (child == null || _observer == null) return null;
 
-    AbstractNode? parentSliver = parent;
+    RenderObject? parentSliver = parent;
 
     int traceCount = 0;
 

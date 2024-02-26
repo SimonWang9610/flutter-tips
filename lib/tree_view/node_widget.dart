@@ -35,7 +35,7 @@ class NodeWidget<T extends BaseNode> extends ParentDataWidget<NodeBoxData> {
     }
 
     if (needsLayout) {}
-    final AbstractNode? targetParent = renderObject.parent;
+    final RenderObject? targetParent = renderObject.parent;
 
     if (targetParent is RenderObject) {
       targetParent.markNeedsLayout();
