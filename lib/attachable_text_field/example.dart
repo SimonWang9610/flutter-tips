@@ -27,48 +27,24 @@ class _AttachableTextFieldExampleState
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: _buildColumn(),
+    );
+  }
+
+  Widget _buildColumn() {
     return Column(
       children: [
         const Text("Placeholder"),
         const Spacer(),
-        const SizedBox(
-          height: 50,
-        ),
-        KeyboardSticky.field(
-          builder: (_, controller, focusNode) => TextField(
-            controller: controller,
-            focusNode: focusNode,
-            onTapOutside: (_) => focusNode.unfocus(),
-            decoration: const InputDecoration(
-              labelText: "Keyboard Sticky 1",
-              border: OutlineInputBorder(),
-            ),
-          ),
-          floatingBuilder: (context, controller, focusNode) {
-            return Material(
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: "Floating 1",
-                  border: OutlineInputBorder(),
-                ),
-                child: ValueListenableBuilder(
-                  valueListenable: controller,
-                  builder: (_, value, child) {
-                    return Text(controller.text);
-                  },
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(
-          height: 50,
-        ),
-
+        // const SizedBox(
+        //   height: 400,
+        // ),
         KeyboardSticky.field(
           controller: _controller,
           focusNode: _focusNode,
-          builder: (_, controller, focusNode) {
+          builder: (inner, controller, focusNode) {
             return TextField(
               controller: controller,
               focusNode: focusNode,
@@ -76,12 +52,12 @@ class _AttachableTextFieldExampleState
                 focusNode.unfocus();
               },
               decoration: const InputDecoration(
-                labelText: "Custom Keyboard Sticky 1",
+                labelText: "Keyboard Sticky 2",
                 border: OutlineInputBorder(),
               ),
             );
           },
-          floatingBuilder: (_, controller, focusNode) {
+          floatingBuilder: (inner, controller, focusNode) {
             return TextField(
               controller: controller,
               focusNode: focusNode,
@@ -89,24 +65,12 @@ class _AttachableTextFieldExampleState
                 focusNode.unfocus();
               },
               decoration: const InputDecoration(
-                labelText: "Custom Floating 1",
+                labelText: "Floating 2",
                 border: OutlineInputBorder(),
               ),
             );
           },
         ),
-
-        // KeyboardSticky.field(
-        //   builder: (_, controller, focusNode) => TextField(
-        //     controller: controller,
-        //     focusNode: focusNode,
-        //     onTapOutside: (_) => focusNode.unfocus(),
-        //     decoration: const InputDecoration(
-        //       labelText: "Keyboard Sticky 2",
-        //       border: OutlineInputBorder(),
-        //     ),
-        //   ),
-        // ),
         const SizedBox(
           height: 50,
         ),

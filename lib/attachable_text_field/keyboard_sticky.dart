@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+const int _kVisibilityTolerance = 1;
+
 typedef KeyboardStickyChildBuilder = Widget Function(
   BuildContext context,
   KeyboardStickyFloatingController controller,
@@ -37,6 +39,17 @@ abstract base class KeyboardSticky extends StatefulWidget {
   //   required KeyboardStickyChildBuilder builder,
   //   required KeyboardStickyChildBuilder floatingBuilder,
   // }) = _KeyboardStickyCustomized;
+
+  static KeyboardStickyFloatingController? of(BuildContext context) {
+    final widget = context.widget is KeyboardSticky;
+
+    if (widget) {
+      return (context as StatefulElement).state
+          as KeyboardStickyFloatingController;
+    }
+
+    return context.findAncestorStateOfType<KeyboardStickyState>();
+  }
 }
 
 final class _KeyboardStickyField extends KeyboardSticky {
@@ -114,7 +127,7 @@ final class _KeyboardStickyFieldState
   }
 
   void _autoShowing() {
-    if (!_visible.value && _originalFocusNode.hasFocus) {
+    if (!_visible.value && (_originalFocusNode.hasFocus)) {
       showFloating();
     } else {
       hideFloating();
@@ -227,6 +240,18 @@ abstract base class KeyboardStickyState<T extends KeyboardSticky>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _checkIfAncestorScrollable();
+  }
+
+  @override
+  void didUpdateWidget(covariant T oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _checkIfAncestorScrollable();
+  }
+
+  @override
   @override
   void dispose() {
     _floating?.dispose();
@@ -239,6 +264,24 @@ abstract base class KeyboardStickyState<T extends KeyboardSticky>
 
   double _fieldLastTrailing = 0;
 
+  /// Two cases when the keyboard is popping up:
+  ///
+  /// Case 1 (the original field needs to resize):
+  ///
+  /// Position change: [leading, trailing, keyboard] -> [leading, trailing, keyboard] -> [leading, keyboard, trailing] ... -> [leading, trailing, keyboard]
+  ///
+  /// During keyboard transition, the original field will be resized to avoid the bottom insets.
+  /// Since the trailing always changes before the leading, we can determine the resizing by comparing the changes of the trailing.
+  ///
+  /// Case 2 (original field is not resized):
+  ///
+  /// Position change: [leading, trailing, keyboard] -> [leading, keyboard, trailing] -> [keyboard, leading, trailing]
+  ///
+  /// We will show the floating field when the original field is focused and not visible totally.
+  ///
+  /// Note: if the original field has a scrollable ancestor, we will not show the floating field,
+  /// and always mark the original field as visible,
+  /// as it is hard to determine if the original field is resizing or its scrollable ancestor is scrolling to show it.
   @override
   void didChangeMetrics() {
     final view = View.of(context);
@@ -250,13 +293,18 @@ abstract base class KeyboardStickyState<T extends KeyboardSticky>
     _keyboardHeight.value = (physicalBottomInsets / pixelRatio).roundToDouble();
 
     final (leading, trailing) = _findRenderLeadingAndTrailing();
-    final resizing = (trailing - _fieldLastTrailing).abs() > 1;
+    final resizing =
+        (trailing - _fieldLastTrailing).abs() > _kVisibilityTolerance;
     final visibleEdge = _screenSize.height - _keyboardHeight.value;
 
     _fieldLastTrailing = trailing;
-    _visible.value = resizing || visibleEdge - leading > -1;
 
-    print('visible: ${_visible.value}, keyboard: ${_keyboardHeight.value}, ');
+    _visible.value = _ancestorScrollable ||
+        resizing ||
+        visibleEdge - leading > -_kVisibilityTolerance;
+
+    print(
+        "visible: ${_visible.value}, ${visibleEdge >= leading}/${visibleEdge >= trailing}, scrollable: $_ancestorScrollable");
   }
 
   (double, double) _findRenderLeadingAndTrailing() {
@@ -273,6 +321,20 @@ abstract base class KeyboardStickyState<T extends KeyboardSticky>
     }
 
     return (0, 0);
+  }
+
+  bool _ancestorScrollable = false;
+
+  void _checkIfAncestorScrollable() {
+    final position = Scrollable.maybeOf(context)?.position;
+
+    // if (position == null || !position.hasPixels) {
+    //   return false;
+    // } else {
+    //   return position.pixels != 0;
+    // }
+
+    _ancestorScrollable = position != null;
   }
 
   OverlayEntry? _floating;
