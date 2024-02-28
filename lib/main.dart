@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tips/attachable_text_field/example.dart';
 import 'package:flutter_tips/dropdown/dropdown.dart';
 import 'package:flutter_tips/dropdown/example.dart';
 
@@ -39,16 +40,14 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         // Here we take the value from the MyHomePage object that was created by
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(8.0),
-          child: DropdownExample(),
-        ),
+        child: AttachableTextFieldExample(),
       ),
     );
   }

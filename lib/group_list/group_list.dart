@@ -128,7 +128,6 @@ class _GroupListState extends State<GroupList> {
     _observers[_selectedIndex.value]?.titleObserver.showInViewport(
           _controller.position,
           duration: const Duration(milliseconds: 300),
-          alignment: 0.5,
         );
 
     // final titleObserver = _observers[_selectedIndex.value]!.titleObserver;
