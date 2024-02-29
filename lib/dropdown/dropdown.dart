@@ -115,10 +115,6 @@ abstract mixin class _DropdownItemManager<T> {
 
 class DropdownController<T> extends ChangeNotifier
     with _DropdownItemManager<T> {
-  final LayerLink _link = LayerLink();
-
-  LayerLink get link => _link;
-
   DropdownController({T? selected, List<T>? items})
       : assert(
           () {
@@ -142,12 +138,12 @@ class DropdownController<T> extends ChangeNotifier
 
   /// Opens the dropdown menu.
   void open() {
-    if (_overlay != null || _state == null) return;
+    if (_overlay != null || _currentActiveState == null) return;
     print("opened");
 
-    _overlay = _state!._buildOverlay();
+    _overlay = _currentActiveState!._buildOverlay();
 
-    Overlay.of(_state!.context).insert(_overlay!);
+    Overlay.of(_currentActiveState!.context).insert(_overlay!);
   }
 
   /// Dismisses the dropdown menu.
@@ -184,21 +180,23 @@ class DropdownController<T> extends ChangeNotifier
     }
   }
 
-  _DropdownState? _state;
-  void _attach(_DropdownState state) {
-    // assert(_state == null,
-    //     "The dropdown controller can only be attached with one [Dropdown] widget.");
+  _DropdownState? get _currentActiveState =>
+      _states.isNotEmpty ? _states.last : null;
 
-    if (_state != state) {
+  final List<_DropdownState> _states = [];
+
+  void _attach(_DropdownState state) {
+    if (state != _currentActiveState) {
       dismiss();
     }
 
-    _state = state;
+    _states.add(state);
   }
 
   void _detach() {
     dismiss();
-    _state = null;
+    if (_states.isEmpty) return;
+    _states.removeLast();
   }
 
   @override
@@ -307,6 +305,8 @@ class Dropdown<T> extends StatefulWidget {
 }
 
 class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
+  final LayerLink _link = LayerLink();
+
   @override
   void initState() {
     super.initState();
@@ -351,7 +351,7 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
             }
           },
           child: OverlayedDropdownMenu<T>(
-            link: widget.controller._link,
+            link: _link,
             loading: widget.controller._loading,
             items: widget.controller.items,
             delegate: widget.delegate,
@@ -374,7 +374,7 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return CompositedTransformTarget(
-      link: widget.controller._link,
+      link: _link,
       child: TapRegion(
         onTapInside: widget.enabled
             ? (_) {

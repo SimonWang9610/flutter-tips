@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
@@ -44,8 +46,7 @@ abstract base class KeyboardSticky extends StatefulWidget {
     final widget = context.widget is KeyboardSticky;
 
     if (widget) {
-      return (context as StatefulElement).state
-          as KeyboardStickyFloatingController;
+      return (context as StatefulElement).state as _KeyboardStickyFieldState;
     }
 
     return context.findAncestorStateOfType<KeyboardStickyState>();
@@ -122,16 +123,38 @@ final class _KeyboardStickyFieldState
 
   void _autoHiding() {
     if (!_floatingFocusNode.hasFocus) {
+      _revokeScheduling();
+      debugPrint("[Floating] -> hiding");
       hideFloating();
     }
   }
 
+  Timer? _debounce;
+
   void _autoShowing() {
     if (!_visible.value && (_originalFocusNode.hasFocus)) {
-      showFloating();
-    } else {
+      _scheduleShowing();
+    } else if (!_floatingFocusNode.hasFocus) {
+      _revokeScheduling();
+      debugPrint("[Original] -> hiding");
       hideFloating();
     }
+  }
+
+  void _revokeScheduling() {
+    _debounce?.cancel();
+    _debounce = null;
+  }
+
+  ///! some aspects may introduce unexpected fluctuations of the calculation of the visibility in [didChangeMetrics]
+  /// so we hope to eliminate the fluctuations as much as possible by delaying showing the floating field,
+  /// thereby avoiding showing the floating field unexpectedly.
+  void _scheduleShowing() {
+    if (_debounce != null && _debounce!.isActive) return;
+    _debounce = Timer(const Duration(milliseconds: 100), () {
+      debugPrint("[Original] -> showing");
+      showFloating();
+    });
   }
 
   @override
@@ -147,6 +170,7 @@ final class _KeyboardStickyFieldState
     super.showFloating();
     if (!_floatingFocusNode.hasFocus) {
       _floatingFocusNode.requestFocus();
+      debugPrint("Requesting focus to Floating Focus Node");
     }
   }
 
