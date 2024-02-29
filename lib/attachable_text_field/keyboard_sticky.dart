@@ -24,9 +24,52 @@ abstract class KeyboardStickyController {
   void hideFloating();
 }
 
+/// A widget that sticks to the keyboard when the keyboard would overlap or hide it.
+///
+/// Typically, it should be used when the current widget cannot resize itself
+/// to avoid the bottom insets, like [Scaffold.resizeToAvoidBottomInset] is set to false.
+///
+/// More importantly, the soft keyboard must be shown;
+/// otherwise, the floating widget will not be shown automatically or have unexpected behaviors.
+///
+/// If this widget has an ancestor [Scrollable], it will not show the floating widget, and he original field is always marked as visible,
+/// as it is hard to determine if the original field is resizing or its scrollable ancestor is scrolling to show it.
 abstract base class KeyboardSticky extends StatefulWidget {
   const KeyboardSticky({super.key});
 
+  /// 3 cases:
+  ///
+  /// Case 1: both [builder] and [floatingBuilder] are bound the given [controller] and [focusNode] to [TextField]s
+  ///
+  /// (Show Sticky Floating)
+  /// when the [builder]'s [TextField] is focused, the [floatingBuilder] [TextField] may be shown after a small delay (100ms).
+  /// As the keyboard is popping up, the device metrics is changed and notified by [WidgetsBindingObserver.didChangeMetrics].
+  ///
+  /// (Hide Sticky Floating)
+  /// 1. Dismissing the keyboard. Like [FocusNode.unfocus] the floating TextField
+  /// 2. Invoking [KeyboardStickyController.hideFloating]
+  ///
+  /// Case 2: [builder] is bound the given [controller] and [focusNode] to [TextField], while [floatingBuilder] shows a non-[TextField] widget
+  ///
+  /// (Show Sticky Floating)
+  /// when the [builder]'s [TextField] is focused, the [floatingBuilder] widget may be shown after a small delay (100ms).
+  /// As the keyboard is popping up, the device metrics is changed and notified by [WidgetsBindingObserver.didChangeMetrics].
+  ///
+  /// (Hide Sticky Floating)
+  /// 1. Dismissing the keyboard. Like using [FocusScopeNode.unfocus] to focus another [TextField] or remove all focus.
+  /// 2. Invoking [KeyboardStickyController.hideFloating]
+  ///
+  /// Case 3: [builder] shows a non-[TextField] widget, while [floatingBuilder] shows a [TextField] bound with the given [controller] and [focusNode]
+  ///
+  /// (Show Sticky Floating)
+  /// Invoking [KeyboardStickyController.showFloating] to show the floating widget,
+  /// and meanwhile, the floating [TextField] would use [FocusNode.requestFocus] to focus itself so as to show the keyboard.
+  ///
+  /// (Hide Sticky Floating)
+  /// 1. Dismissing the keyboard. Like [FocusNode.unfocus] the floating TextField
+  /// 2. Invoking [KeyboardStickyController.hideFloating]
+  ///
+  /// NOTE: For case 3, it is users' responsibility to manage the floating widget properly.
   const factory KeyboardSticky.field({
     Key? key,
     required KeyboardStickyTextFieldBuilder builder,
