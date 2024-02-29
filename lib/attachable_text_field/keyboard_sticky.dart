@@ -7,7 +7,7 @@ const int _kVisibilityTolerance = 1;
 
 typedef KeyboardStickyChildBuilder = Widget Function(
   BuildContext context,
-  KeyboardStickyFloatingController controller,
+  KeyboardStickyController controller,
 );
 
 typedef KeyboardStickyTextFieldBuilder = Widget Function(
@@ -16,7 +16,7 @@ typedef KeyboardStickyTextFieldBuilder = Widget Function(
   FocusNode focusNode,
 );
 
-abstract class KeyboardStickyFloatingController {
+abstract class KeyboardStickyController {
   bool get visible;
   double get keyboardHeight;
 
@@ -42,7 +42,7 @@ abstract base class KeyboardSticky extends StatefulWidget {
   //   required KeyboardStickyChildBuilder floatingBuilder,
   // }) = _KeyboardStickyCustomized;
 
-  static KeyboardStickyFloatingController? of(BuildContext context) {
+  static KeyboardStickyController? of(BuildContext context) {
     final widget = context.widget is KeyboardSticky;
 
     if (widget) {
@@ -243,7 +243,7 @@ final class _KeyboardStickyCustomizedState
 abstract base class KeyboardStickyState<T extends KeyboardSticky>
     extends State<T>
     with WidgetsBindingObserver
-    implements KeyboardStickyFloatingController {
+    implements KeyboardStickyController {
   final ValueNotifier<bool> _visible = ValueNotifier(true);
   final ValueNotifier<double> _keyboardHeight = ValueNotifier(0);
 

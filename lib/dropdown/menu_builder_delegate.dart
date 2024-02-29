@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tips/dropdown/models.dart';
+import './models.dart';
 
 abstract base class DropdownMenuBuilderDelegate<T> {
   const DropdownMenuBuilderDelegate();
-  Widget build(BuildContext context, List<T> items, bool loading);
+  Widget build(BuildContext context, List<DropdownItem<T>> items, bool loading);
 }
 
 final class CustomMenuBuilderDelegate<T>
@@ -13,7 +13,8 @@ final class CustomMenuBuilderDelegate<T>
   const CustomMenuBuilderDelegate(this.builder);
 
   @override
-  Widget build(BuildContext context, List<T> items, bool loading) {
+  Widget build(
+      BuildContext context, List<DropdownItem<T>> items, bool loading) {
     return builder(context, items, loading);
   }
 
@@ -30,7 +31,6 @@ final class CustomMenuBuilderDelegate<T>
 
 final class ListViewMenuBuilderDelegate<T>
     extends DropdownMenuBuilderDelegate<T> {
-  final List<T> items;
   final MenuItemBuilder<T> itemBuilder;
   final DropdownMenuPosition position;
   final IndexedWidgetBuilder? separatorBuilder;
@@ -38,7 +38,6 @@ final class ListViewMenuBuilderDelegate<T>
   final WidgetBuilder? emptyListBuilder;
 
   const ListViewMenuBuilderDelegate({
-    required this.items,
     required this.itemBuilder,
     required this.position,
     this.separatorBuilder,
@@ -47,7 +46,8 @@ final class ListViewMenuBuilderDelegate<T>
   });
 
   @override
-  Widget build(BuildContext context, List<T> items, bool loading) {
+  Widget build(
+      BuildContext context, List<DropdownItem<T>> items, bool loading) {
     final reversed = position.anchor.y > 0;
 
     Widget result;
@@ -86,8 +86,7 @@ final class ListViewMenuBuilderDelegate<T>
   bool operator ==(covariant ListViewMenuBuilderDelegate<T> other) {
     if (identical(this, other)) return true;
 
-    return other.items == items &&
-        other.itemBuilder == itemBuilder &&
+    return other.itemBuilder == itemBuilder &&
         other.position == position &&
         other.separatorBuilder == separatorBuilder &&
         other.loadingBuilder == loadingBuilder &&
@@ -96,8 +95,7 @@ final class ListViewMenuBuilderDelegate<T>
 
   @override
   int get hashCode {
-    return items.hashCode ^
-        itemBuilder.hashCode ^
+    return itemBuilder.hashCode ^
         position.hashCode ^
         separatorBuilder.hashCode ^
         loadingBuilder.hashCode ^
@@ -112,7 +110,7 @@ class OverlayedDropdownMenu<T> extends StatelessWidget {
   final DropdownMenuPosition position;
   final BoxConstraints? constraints;
   final BoxDecoration? decoration;
-  final List<T> items;
+  final List<DropdownItem<T>> items;
   final DropdownMenuBuilderDelegate<T> delegate;
 
   final bool crossAxisConstrained;

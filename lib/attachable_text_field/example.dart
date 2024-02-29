@@ -1,9 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter_tips/attachable_text_field/attachable.dart';
 import 'package:flutter_tips/attachable_text_field/keyboard_sticky.dart';
+import 'package:flutter_tips/dropdown/controller.dart';
 import 'package:flutter_tips/dropdown/dropdown.dart';
 import 'package:flutter_tips/dropdown/models.dart';
 
@@ -91,8 +88,11 @@ class StickyDropdownExample extends StatefulWidget {
 }
 
 class _StickyDropdownExampleState extends State<StickyDropdownExample> {
-  final DropdownController<String> _controller = DropdownController<String>(
-    items: List.generate(15, (i) => "index $i"),
+  final DropdownController<String> _controller = DropdownController.single(
+    items: List.generate(
+      15,
+      (i) => DropdownItem(value: "Item $i"),
+    ),
   );
 
   @override
@@ -130,7 +130,7 @@ class _StickyDropdownExampleState extends State<StickyDropdownExample> {
           ///! if enabled, the dropdown menu would first insert itself into the overlay,
           ///! consequently, it would effect the visibility calculation of the dropdown menu during resizing.
           ///! no effect if we o not need to resize the dropdown menu to avoid the bottom insets.
-          enabled: true,
+          // enabled: false,
           menuPosition: const DropdownMenuPosition(
             targetAnchor: Alignment.topLeft,
             anchor: Alignment.bottomLeft,
@@ -151,7 +151,7 @@ class _StickyDropdownExampleState extends State<StickyDropdownExample> {
             ],
           ),
           controller: _controller,
-          builder: (_, selected) {
+          builder: (_) {
             return TextField(
               controller: textController,
               focusNode: focusNode,
@@ -164,29 +164,30 @@ class _StickyDropdownExampleState extends State<StickyDropdownExample> {
                   _controller.restore();
                 } else {
                   _controller.search(
-                    (ele, query) => ele.contains(query),
                     value,
+                    matcher: (query, ele) => ele.contains(query),
                   );
                 }
               },
-              decoration: InputDecoration(
-                labelText: selected ?? "Sticky Dropdown",
-                border: const OutlineInputBorder(),
+              decoration: const InputDecoration(
+                labelText: "Sticky Dropdown",
+                border: OutlineInputBorder(),
               ),
             );
           },
           itemBuilder: (_, item) => GestureDetector(
             onTap: () {
-              _controller.select(item);
-              textController.text = item;
+              _controller.select(item.value);
+              textController.text = item.value;
               focusNode.unfocus();
             },
             child: Card(
               margin: const EdgeInsets.all(8),
+              color: item.selected ? Colors.green : Colors.grey,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(2),
               ),
-              child: Text(item),
+              child: Text(item.value),
             ),
           ),
         );

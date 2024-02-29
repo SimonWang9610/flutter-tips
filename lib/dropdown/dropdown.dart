@@ -1,226 +1,13 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart' hide DropdownButtonBuilder;
-import 'package:flutter/scheduler.dart';
-import 'package:flutter_tips/dropdown/delegate.dart';
-import 'package:flutter_tips/dropdown/models.dart';
-
-void _ensureLegallyInvokeVoidCallback(Function callback) {
-  if (WidgetsBinding.instance.schedulerPhase ==
-      SchedulerPhase.postFrameCallbacks) {
-    callback();
-  } else {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      callback();
-    });
-  }
-}
-
-/// todo: undo search results
-abstract mixin class _DropdownItemManager<T> {
-  T? _selected;
-  T? get selectedItem => _selected;
-
-  List<T> _items = [];
-
-  List<T>? _itemsBeforeSearch;
-
-  List<T> get items => List.unmodifiable(_items);
-
-  void addItems(List<T> items, {bool append = true}) {
-    if (!append) {
-      _items = _mergeItems(items);
-    } else {
-      _items = [
-        ..._items,
-        ...items,
-      ];
-    }
-    _rebuildMenu();
-  }
-
-  void replaceItems(List<T> items) {
-    _itemsBeforeSearch ??= List.unmodifiable(_items);
-    _items = items;
-    _rebuildMenu();
-  }
-
-  bool _loading = false;
-
-  Future<void> loadMore(
-    DropdownItemLoader<T> loader, {
-    bool appendOnly = true,
-  }) async {
-    markAsLoading();
-
-    try {
-      final items = await loader();
-
-      if (appendOnly) {
-        _items = [
-          ..._items,
-          ...items,
-        ];
-      } else {
-        _items = _mergeItems(items);
-      }
-    } catch (e) {
-      print(e);
-    } finally {
-      markAsLoaded();
-      _rebuildMenu();
-    }
-  }
-
-  void markAsLoading() {
-    if (!_loading) {
-      _loading = true;
-      _rebuildMenu();
-    }
-  }
-
-  void markAsLoaded() {
-    if (_loading) {
-      _loading = false;
-      _rebuildMenu();
-    }
-  }
-
-  void search(DropdownItemMatcher<T> matcher, String query) {
-    _itemsBeforeSearch ??= List.unmodifiable(_items);
-    _items = _itemsBeforeSearch!
-        .where((element) => matcher(element, query))
-        .toList();
-    _rebuildMenu();
-  }
-
-  void restore() {
-    _loading = false;
-    if (_itemsBeforeSearch != null) {
-      _items = List.from(_itemsBeforeSearch!);
-      _itemsBeforeSearch = null;
-    }
-
-    _rebuildMenu();
-  }
-
-  List<T> _mergeItems(List<T> items) {
-    final Set<T> s = Set.from(_items);
-    s.addAll(items);
-    return s.toList();
-  }
-
-  void _rebuildMenu();
-}
-
-class DropdownController<T> extends ChangeNotifier
-    with _DropdownItemManager<T> {
-  DropdownController({T? selected, List<T>? items})
-      : assert(
-          () {
-            final valid = selected == null ||
-                (items?.any((element) => element == selected) ?? true);
-            return valid;
-          }(),
-          "The initial selected item must be in the items list, or null.",
-        ) {
-    _selected = selected;
-
-    if (items != null) {
-      _items.addAll(items);
-    }
-  }
-
-  /// Whether the dropdown menu is displaying.
-  bool get isOpen => _overlay != null;
-
-  OverlayEntry? _overlay;
-
-  /// Opens the dropdown menu.
-  void open() {
-    if (_overlay != null || _currentActiveState == null) return;
-    print("opened");
-
-    _overlay = _currentActiveState!._buildOverlay();
-
-    Overlay.of(_currentActiveState!.context).insert(_overlay!);
-  }
-
-  /// Dismisses the dropdown menu.
-  void dismiss() {
-    if (_overlay != null) {
-      _overlay?.remove();
-      _overlay = null;
-      print("dismissed");
-    }
-  }
-
-  /// Selects the given value and dismisses the dropdown menu.
-  /// Typically, developers should programmatically call this method to select a value,
-  /// e.g., wrapping a list item with a [GestureDetector] and calling this method in its [onTap] callback.
-  void select(
-    T? value, {
-    bool dismiss = true,
-    bool notify = true,
-  }) {
-    assert(
-      value == null || _items.any((element) => element == value),
-      "The selected item must be in the items list, or null.",
-    );
-
-    if (_selected != value) {
-      _selected = value;
-      if (notify) {
-        notifyListeners();
-      }
-    }
-
-    if (dismiss) {
-      this.dismiss();
-    }
-  }
-
-  _DropdownState? get _currentActiveState =>
-      _states.isNotEmpty ? _states.last : null;
-
-  final List<_DropdownState> _states = [];
-
-  void _attach(_DropdownState state) {
-    if (state != _currentActiveState) {
-      dismiss();
-    }
-
-    _states.add(state);
-  }
-
-  void _detach() {
-    dismiss();
-    if (_states.isEmpty) return;
-    _states.removeLast();
-  }
-
-  @override
-  void _rebuildMenu() {
-    _ensureLegallyInvokeVoidCallback(() {
-      if (_overlay != null) {
-        _overlay!.markNeedsBuild();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _overlay?.dispose();
-    _overlay = null;
-    super.dispose();
-  }
-}
+import 'controller.dart';
+import 'menu_builder_delegate.dart';
+import 'models.dart';
 
 /// todo: support animating the dropdown menu
 class Dropdown<T> extends StatefulWidget {
   /// The widget that will be used to trigger the dropdown.
   /// It can be a button, a text field, or any other widget.
-  final DropdownButtonBuilder<T> builder;
+  final WidgetBuilder builder;
   // final AnimationMenuBuilder? animationBuilder;
   // final Duration duration;
 
@@ -250,6 +37,7 @@ class Dropdown<T> extends StatefulWidget {
   final bool dismissible;
 
   final bool enabled;
+  final bool enableListen;
 
   const Dropdown({
     super.key,
@@ -262,6 +50,7 @@ class Dropdown<T> extends StatefulWidget {
     this.crossAxisConstrained = true,
     this.dismissible = true,
     this.enabled = true,
+    this.enableListen = true,
   });
 
   Dropdown.list({
@@ -270,6 +59,7 @@ class Dropdown<T> extends StatefulWidget {
     required this.controller,
     this.menuConstraints,
     this.menuDecoration,
+    this.enableListen = true,
     this.menuPosition = const DropdownMenuPosition(),
     this.crossAxisConstrained = true,
     this.dismissible = true,
@@ -279,7 +69,6 @@ class Dropdown<T> extends StatefulWidget {
     WidgetBuilder? loadingBuilder,
     WidgetBuilder? emptyListBuilder,
   }) : delegate = ListViewMenuBuilderDelegate<T>(
-          items: controller.items,
           itemBuilder: itemBuilder,
           position: menuPosition,
           separatorBuilder: separatorBuilder,
@@ -294,6 +83,7 @@ class Dropdown<T> extends StatefulWidget {
     required DropdownMenuBuilder<T> menuBuilder,
     this.menuConstraints,
     this.menuDecoration,
+    this.enableListen = true,
     this.menuPosition = const DropdownMenuPosition(),
     this.crossAxisConstrained = true,
     this.dismissible = true,
@@ -304,13 +94,14 @@ class Dropdown<T> extends StatefulWidget {
   State<Dropdown<T>> createState() => _DropdownState<T>();
 }
 
-class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
+class _DropdownState<T> extends State<Dropdown<T>>
+    with WidgetsBindingObserver, DropdownOverlayBuilderDelegate {
   final LayerLink _link = LayerLink();
 
   @override
   void initState() {
     super.initState();
-    widget.controller._attach(this);
+    widget.controller.attach(this);
     WidgetsBinding.instance.addObserver(this);
   }
 
@@ -319,8 +110,8 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.controller != widget.controller) {
-      oldWidget.controller._detach();
-      widget.controller._attach(this);
+      oldWidget.controller.detach();
+      widget.controller.attach(this);
     }
 
     if (oldWidget.menuDecoration != widget.menuDecoration ||
@@ -330,18 +121,21 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
         oldWidget.dismissible != widget.dismissible ||
         oldWidget.enabled != widget.enabled ||
         oldWidget.delegate != widget.delegate) {
-      widget.controller._rebuildMenu();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.controller.rebuildMenu();
+      });
     }
   }
 
   @override
   void dispose() {
-    widget.controller._detach();
+    widget.controller.detach();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  OverlayEntry _buildOverlay() {
+  @override
+  OverlayEntry buildMenuOverlay() {
     return OverlayEntry(
       builder: (context) {
         return TapRegion(
@@ -352,8 +146,8 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
           },
           child: OverlayedDropdownMenu<T>(
             link: _link,
-            loading: widget.controller._loading,
-            items: widget.controller.items,
+            loading: widget.controller.loading,
+            items: widget.controller.currentItems,
             delegate: widget.delegate,
             decoration: widget.menuDecoration,
             constraints: widget.menuConstraints,
@@ -385,11 +179,12 @@ class _DropdownState<T> extends State<Dropdown<T>> with WidgetsBindingObserver {
                 }
               }
             : null,
-        child: ListenableBuilder(
-          listenable: widget.controller,
-          builder: (inner, child) =>
-              widget.builder(context, widget.controller.selectedItem),
-        ),
+        child: widget.enableListen
+            ? ListenableBuilder(
+                listenable: widget.controller,
+                builder: (inner, _) => widget.builder(inner),
+              )
+            : widget.builder(context),
       ),
     );
   }

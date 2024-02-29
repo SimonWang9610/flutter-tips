@@ -44,11 +44,39 @@ class DropdownMenuPosition {
   int get hashCode => targetAnchor.hashCode ^ anchor.hashCode ^ offset.hashCode;
 }
 
-typedef DropdownItemLoader<T> = FutureOr<List<T>> Function();
-typedef DropdownItemAsyncSearcher<T> = Future<List<T>> Function(String);
-typedef DropdownItemMatcher<T> = bool Function(T, String);
-typedef MenuItemBuilder<T> = Widget Function(BuildContext, T);
-typedef DropdownButtonBuilder<T> = Widget Function(BuildContext, T?);
+class DropdownItem<T> {
+  final T value;
+  final bool selected;
+
+  const DropdownItem({
+    required this.value,
+    this.selected = false,
+  });
+
+  DropdownItem<T> copyWith({
+    T? value,
+    bool? selected,
+  }) {
+    return DropdownItem(
+      value: value ?? this.value,
+      selected: selected ?? this.selected,
+    );
+  }
+
+  @override
+  bool operator ==(covariant DropdownItem<T> other) {
+    if (identical(this, other)) return true;
+
+    return other.value == value && other.selected == selected;
+  }
+
+  @override
+  int get hashCode => value.hashCode ^ selected.hashCode;
+}
+
+typedef DropdownItemLoader<T> = FutureOr<List<DropdownItem<T>>> Function();
+typedef DropdownItemMatcher<K extends Object, T> = bool Function(K, T);
+typedef MenuItemBuilder<T> = Widget Function(BuildContext, DropdownItem<T>);
 typedef AnimationMenuBuilder = Widget Function(
   BuildContext,
   Animation<double>,
@@ -56,4 +84,4 @@ typedef AnimationMenuBuilder = Widget Function(
 );
 
 typedef DropdownMenuBuilder<T> = Widget Function(
-    BuildContext, List<T> items, bool loading);
+    BuildContext, List<DropdownItem<T>> items, bool loading);
