@@ -289,7 +289,7 @@ abstract base class KeyboardStickyState<T extends KeyboardSticky>
     _floating = null;
   }
 
-  void _rebuildFloating() {
+  void rebuildFloating() {
     if (_floating != null) {
       if (WidgetsBinding.instance.schedulerPhase ==
           SchedulerPhase.postFrameCallbacks) {
@@ -374,7 +374,7 @@ final class _DelegatedKeyboardStickyState
 
     if (oldWidget.floatingDelegate != widget.floatingDelegate ||
         oldWidget.useMaterial != widget.useMaterial) {
-      _rebuildFloating();
+      rebuildFloating();
     }
   }
 
